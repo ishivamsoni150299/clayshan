@@ -1,0 +1,24 @@
+<section class="container contact">
+  <h1>Contact Us</h1>
+  <form (ngSubmit)="submit()" *ngIf="!submitted" class="form">
+    <label>
+      Name
+      <input [(ngModel)]="name" name="name" required />
+    </label>
+    <label>
+      Email
+      <input [(ngModel)]="email" name="email" type="email" required />
+    </label>
+    <label>
+      Message
+      <textarea [(ngModel)]="message" name="message" rows="5" required></textarea>
+    </label>
+    <button class="btn primary" type="submit" [disabled]="sending">{{ sending ? 'Sending…' : 'Send' }}</button>
+    <div class="error" *ngIf="error">{{ error }}</div>
+  </form>
+
+  <div class="thanks" *ngIf="submitted">
+    <h2>Thank you!</h2>
+    <p>We’ll be in touch soon.</p>
+  </div>
+</section>

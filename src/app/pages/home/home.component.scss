@@ -1,0 +1,71 @@
+.hero {
+  position: relative;
+  background: linear-gradient(180deg, #fff8e7 0%, #ffffff 60%);
+}
+.hero .container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 60px 16px;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 32px;
+  align-items: center;
+}
+.copy h1 {
+  font-family: var(--heading-font, 'Playfair Display', serif);
+  font-size: clamp(32px, 6vw, 56px);
+  line-height: 1.05;
+  color: #2b1b0e;
+  margin: 0 0 12px;
+}
+.copy p {
+  color: #6b5b4a;
+  font-size: 1.125rem;
+  margin-bottom: 20px;
+}
+.cta { display: flex; gap: 12px; }
+.btn {
+  border: 1px solid #d1b06b;
+  color: #2b1b0e;
+  padding: 10px 16px;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 600;
+}
+.btn.primary { background: #d4af37; color: #2b1b0e; border-color: #d4af37; }
+.btn:hover { filter: brightness(0.95); }
+.hero-image {
+  width: 100%;
+  aspect-ratio: 4/5;
+  border-radius: 20px;
+  background: radial-gradient(120% 80% at 50% 20%, #fff3c4 0%, #f4e2b7 35%, #ecd9a3 55%, #ffffff 100%);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}
+.ornament {
+  position: absolute; inset: auto 0 -24px 0; height: 24px;
+  background: linear-gradient(90deg, transparent, #d4af37 30%, #b88917 70%, transparent);
+  opacity: 0.4;
+}
+.section { padding: 40px 0 72px; }
+.section .container { max-width: 1200px; margin: 0 auto; padding: 0 16px; }
+.section-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px; }
+.section-head h2 {
+  font-family: var(--heading-font, 'Playfair Display', serif);
+  color: #2b1b0e;
+  margin: 0;
+}
+.link { color: #b8860b; text-decoration: none; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+@media (max-width: 1000px) { .grid { grid-template-columns: repeat(3, 1fr); } .hero .container { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .grid { grid-template-columns: 1fr; } }
+
+.categories .cat-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 16px; }
+.categories .cat { display: grid; gap: 8px; text-decoration: none; color: inherit; border: 1px solid rgba(0,0,0,.06); border-radius: 16px; padding: 10px; background:#fff; }
+.categories img { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 12px; }
+.categories span { font-weight: 600; text-align: center; }
+@media (max-width: 900px) { .categories .cat-grid { grid-template-columns: repeat(2,1fr); } }

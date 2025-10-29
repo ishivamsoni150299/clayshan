@@ -1,0 +1,29 @@
+<section class="container">
+  <h1>Orders</h1>
+  <div *ngIf="loading()">Loading…</div>
+  <div *ngIf="!loading() && error()" class="error">{{ error() }}</div>
+  <table *ngIf="!loading() && !error() && orders().length" class="orders">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Amount</th>
+        <th>Email</th>
+        <th>Status</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let o of orders()">
+        <td class="mono">{{ o.id }}</td>
+        <td>{{ o.amount | currency: o.currency }}</td>
+        <td>{{ o.email || '—' }}</td>
+        <td>{{ o.status || 'paid' }}</td>
+        <td>{{ o.created_at | date:'medium' }}</td>
+      </tr>
+    </tbody>
+  </table>
+  <div *ngIf="!loading() && !error() && !orders().length">
+    No orders yet.
+  </div>
+</section>
+

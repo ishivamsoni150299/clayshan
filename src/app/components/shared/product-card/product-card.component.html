@@ -1,0 +1,23 @@
+<a class="card" [routerLink]="['/product', product.slug]">
+  <div class="image-wrap">
+    <img
+      [src]="product.images[0] || 'assets/placeholder.svg'"
+      [alt]="product.name"
+      (error)="onImgError($event)"
+      loading="lazy"
+      width="600"
+      height="600"
+      decoding="async"
+      sizes="(max-width: 700px) 50vw, (max-width: 480px) 100vw, 25vw"
+    />
+    <button class="quick" (click)="add($event)">Add</button>
+  </div>
+  <div class="info">
+    <div class="name">{{ product.name }}</div>
+    <div class="price">{{ product.price | currency: product.currency }}</div>
+    <div class="meta">
+      <span class="stars" aria-label="Rating">★★★★★</span>
+      <span class="count">({{ ratingCount }})</span>
+    </div>
+  </div>
+</a>

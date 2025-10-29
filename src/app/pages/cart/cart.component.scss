@@ -1,0 +1,14 @@
+.container { max-width: 900px; margin: 0 auto; padding: 24px 16px; }
+.row { display: grid; grid-template-columns: 80px 1fr auto auto; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #eee; }
+img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; background: #f4f4f4; }
+.name { font-weight: 600; }
+.meta { color: #666; font-size: .9rem; }
+.price { font-weight: 600; }
+.link { background: none; border: 0; color: #b00020; cursor: pointer; }
+.total { font-size: 1.1rem; }
+.total .label { font-weight: 600; }
+.actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 12px; }
+.btn { border: 1px solid #d1b06b; color: #2b1b0e; padding: 8px 14px; border-radius: 999px; background: #fff; cursor: pointer; }
+.btn.primary { background: #d4af37; border-color: #d4af37; }
+@media (max-width: 640px) { .row { grid-template-columns: 64px 1fr auto; } .link.danger { grid-column: 3; } }
+

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="g3" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#fff4d8"/>
+      <stop offset="100%" stop-color="#f7e6bb"/>
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#g3)"/>
+  <g fill="#d4af37" stroke="#b8860b" stroke-width="6">
+    <circle cx="220" cy="400" r="24"/>
+    <circle cx="280" cy="400" r="24"/>
+    <circle cx="340" cy="400" r="24"/>
+    <circle cx="400" cy="400" r="24"/>
+    <circle cx="460" cy="400" r="24"/>
+    <circle cx="520" cy="400" r="24"/>
+    <circle cx="580" cy="400" r="24"/>
+  </g>
+  <text x="50%" y="86%" text-anchor="middle" font-family="'Playfair Display', serif" font-size="28" fill="#6b3d14">Temple Coin Bracelet</text>
+</svg>
+

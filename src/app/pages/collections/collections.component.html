@@ -1,0 +1,25 @@
+<section class="container collections">
+  <h1>Collections</h1>
+  <div class="toolbar">
+    <input [(ngModel)]="query" type="search" placeholder="Search jewellery..." />
+    <select [(ngModel)]="category">
+      <option [ngValue]="null">All categories</option>
+      <option *ngFor="let c of categories()" [ngValue]="c">{{ c }}</option>
+    </select>
+    <select [(ngModel)]="sort">
+      <option [ngValue]="'reco'">Recommended</option>
+      <option [ngValue]="'price_asc'">Price: Low to High</option>
+      <option [ngValue]="'price_desc'">Price: High to Low</option>
+      <option [ngValue]="'name_asc'">Name: A–Z</option>
+    </select>
+  </div>
+  <div class="grid">
+    <ng-container *ngIf="productService.status() === 'loading'">
+      <app-skeleton-card *ngFor="let i of [1,2,3,4,5,6,7,8,9,10,11,12]"></app-skeleton-card>
+    </ng-container>
+    <ng-container *ngIf="productService.status() !== 'loading'">
+      <app-product-card *ngFor="let p of filtered()" [product]="p" />
+    </ng-container>
+  </div>
+</section>
+

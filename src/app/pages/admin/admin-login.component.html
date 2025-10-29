@@ -1,0 +1,9 @@
+<section class="container admin-login">
+  <h1>Admin Login</h1>
+  <form (ngSubmit)="submit()" class="form">
+    <label>Email <input [(ngModel)]="email" name="email" type="email" required /></label>
+    <label>Password <input [(ngModel)]="password" name="password" type="password" required /></label>
+    <button class="btn primary" type="submit" [disabled]="sending">{{ sending ? 'Signing in…' : 'Sign in' }}</button>
+    <div class="error" *ngIf="error">{{ error }}</div>
+  </form>
+</section>

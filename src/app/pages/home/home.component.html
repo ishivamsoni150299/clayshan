@@ -1,0 +1,58 @@
+<section class="hero">
+  <div class="container">
+    <div class="copy">
+      <h1>Modern Indian Jewellery</h1>
+      <p>Handcrafted elegance in gold tones and gemstones.</p>
+      <div class="cta">
+        <a routerLink="/collections" class="btn primary">Shop Collections</a>
+        <a routerLink="/about" class="btn">About Us</a>
+      </div>
+    </div>
+    <div class="hero-image" aria-hidden="true"></div>
+  </div>
+  <div class="ornament" aria-hidden="true"></div>
+</section>
+
+<section class="section">
+  <div class="container">
+    <div class="section-head">
+      <h2>Featured Pieces</h2>
+      <a routerLink="/collections" class="link">View all</a>
+    </div>
+    <div class="grid">
+      <ng-container *ngIf="productService.status() === 'loading'">
+        <app-skeleton-card *ngFor="let i of [1,2,3,4,5,6,7,8]"></app-skeleton-card>
+      </ng-container>
+      <ng-container *ngIf="productService.status() !== 'loading' && productService.products() as products">
+        <app-product-card *ngFor="let p of products | slice:0:8" [product]="p" />
+      </ng-container>
+    </div>
+  </div>
+  </section>
+
+<section class="section categories">
+  <div class="container">
+    <div class="section-head">
+      <h2>Shop by Category</h2>
+      <a routerLink="/collections" class="link">Browse all</a>
+    </div>
+    <div class="cat-grid">
+      <a routerLink="/collections" class="cat" aria-label="Necklaces">
+        <img src="/assets/products/kundan-necklace-1.svg" alt="Necklaces" />
+        <span>Necklaces</span>
+      </a>
+      <a routerLink="/collections" class="cat" aria-label="Earrings">
+        <img src="/assets/products/pearl-earrings-1.svg" alt="Earrings" />
+        <span>Earrings</span>
+      </a>
+      <a routerLink="/collections" class="cat" aria-label="Bracelets">
+        <img src="/assets/products/coin-bracelet-1.svg" alt="Bracelets" />
+        <span>Bracelets</span>
+      </a>
+      <a routerLink="/collections" class="cat" aria-label="Rings">
+        <img src="/assets/products/stack-ring-1.svg" alt="Rings" />
+        <span>Rings</span>
+      </a>
+    </div>
+  </div>
+</section>

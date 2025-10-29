@@ -1,0 +1,52 @@
+<header class="nav" [class.open]="open()">
+  <div class="container">
+    <a class="brand" routerLink="/" (click)="close()">Clayshan</a>
+    <nav class="links" aria-label="Primary">
+      <a routerLink="/collections" routerLinkActive="active" (click)="close()">Collections</a>
+      <a routerLink="/about" routerLinkActive="active" (click)="close()">About</a>
+      <a routerLink="/contact" routerLinkActive="active" (click)="close()">Contact</a>
+      <div class="cart-wrap" (click)="$event.stopPropagation()">
+        <a href="#" class="cart-link" (click)="toggleCart($event)">Cart <span class="count" *ngIf="count() > 0">{{ count() }}</span></a>
+        <div class="mini-cart" *ngIf="cartOpen()">
+          <div *ngIf="items().length === 0" class="empty">Your cart is empty.</div>
+          <div class="line" *ngFor="let it of items()">
+            <img [src]="it.image || 'assets/placeholder.svg'" alt="" (error)="imgError($event)" />
+            <div class="meta">
+              <div class="name">{{ it.name }}</div>
+              <div class="sub">x{{ it.qty }}</div>
+            </div>
+            <div class="price">{{ it.price * it.qty | currency: it.currency }}</div>
+            <button class="remove" (click)="remove(it.id)" aria-label="Remove">×</button>
+          </div>
+          <div class="total" *ngIf="items().length">
+            <span>Subtotal</span><span>{{ total() | currency: (items()[0]?.currency || 'INR') }}</span>
+          </div>
+          <div class="actions" *ngIf="items().length">
+            <a routerLink="/cart" class="btn primary" (click)="closeCart()">View Cart & Checkout</a>
+          </div>
+        </div>
+      </div>
+      <a *ngIf="admin.loggedIn()" routerLink="/admin" routerLinkActive="active" (click)="close()">Admin</a>
+      <a *ngIf="admin.loggedIn()" routerLink="/admin/orders" routerLinkActive="active" (click)="close()">Orders</a>
+    </nav>
+    <button class="menu" aria-label="Menu" [attr.aria-expanded]="open()" (click)="toggle()">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+  <div class="sheet" (click)="close()">
+    <div class="sheet-inner" (click)="$event.stopPropagation()">
+      <a routerLink="/collections" (click)="close()">Collections</a>
+      <a routerLink="/about" (click)="close()">About</a>
+      <a routerLink="/contact" (click)="close()">Contact</a>
+      <a routerLink="/cart" (click)="close()" class="cart-link">Cart <span class="count" *ngIf="count() > 0">{{ count() }}</span></a>
+      <a *ngIf="admin.loggedIn()" routerLink="/admin" (click)="close()">Admin</a>
+      <a *ngIf="admin.loggedIn()" routerLink="/admin/orders" (click)="close()">Orders</a>
+    </div>
+  </div>
+</header>
+<!-- Floating WhatsApp button (site-wide) -->
+<a class="whatsapp-fab" [href]="whUrl()" target="_blank" rel="noopener" aria-label="Chat on WhatsApp">
+  <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <path fill="#fff" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.472-.148-.671.15-.198.297-.767.966-.94 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.463-2.39-1.477-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.074-.149-.671-1.612-.92-2.206-.242-.58-.487-.501-.671-.51l-.572-.01c-.198 0-.52.074-.792.372-.273.297-1.04 1.016-1.04 2.479s1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.71.306 1.263.489 1.694.626.712.227 1.361.195 1.874.118.571-.085 1.758-.718 2.007-1.412.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 5.428h-.003a8.76 8.76 0 0 1-4.457-1.219l-.319-.189-3.308.868.884-3.229-.207-.331a8.744 8.744 0 0 1-1.343-4.655c.002-4.827 3.94-8.758 8.768-8.756 2.341.001 4.536.913 6.19 2.568a8.68 8.68 0 0 1 2.565 6.194c-.003 4.827-3.941 8.758-8.77 8.758"/>
+  </svg>
+</a>

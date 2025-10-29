@@ -1,0 +1,8 @@
+.usps { background: #fff; }
+.usps .container { max-width: 1200px; margin: 0 auto; padding: 14px 16px; display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
+.usp { display: flex; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid rgba(0,0,0,0.06); border-radius: 12px; background: #fff; }
+.icon { font-size: 18px; }
+.ornament { height: 1px; background: linear-gradient(90deg, transparent, #d4af37, transparent); opacity: .5; }
+@media (max-width: 900px) { .usps .container { grid-template-columns: repeat(2,1fr);} }
+@media (max-width: 560px) { .usps .container { grid-template-columns: 1fr;} }
+

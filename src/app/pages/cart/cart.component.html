@@ -1,0 +1,24 @@
+<section class="container cart">
+  <h1>Your Cart</h1>
+  <div *ngIf="cart.items().length === 0">Your cart is empty.</div>
+  <div class="list" *ngIf="cart.items().length">
+    <div class="row" *ngFor="let it of cart.items()">
+      <img *ngIf="it.image" [src]="it.image" alt="{{it.name}}" />
+      <div class="info">
+        <div class="name">{{ it.name }}</div>
+        <div class="meta">Qty: {{ it.qty }}</div>
+      </div>
+      <div class="price">{{ (it.price * it.qty) | currency: it.currency }}</div>
+      <button class="link danger" (click)="cart.remove(it.id)">Remove</button>
+    </div>
+    <div class="row total">
+      <div class="spacer"></div>
+      <div class="label">Total</div>
+      <div class="price">{{ total() | currency: (cart.items()[0]?.currency || 'INR') }}</div>
+    </div>
+    <div class="actions">
+      <a class="btn" routerLink="/collections">Continue shopping</a>
+      <button class="btn primary" (click)="checkout()" [disabled]="!total()">Checkout</button>
+    </div>
+  </div>
+</section>

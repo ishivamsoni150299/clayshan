@@ -1,0 +1,86 @@
+<nav class="breadcrumbs container"><a routerLink="/">Home</a> / <a routerLink="/collections">Collections</a> / <span>{{ product?.name || 'Loading…' }}</span></nav>
+<section class="container" *ngIf="product as p; else pending">
+  <div class="layout">
+    <div class="gallery">
+      <div class="main">
+        <img [src]="selectedImage || p.images[0]" [alt]="p.name" (error)="onImgError($event)" />
+      </div>
+      <div class="thumbs">
+        <button *ngFor="let img of p.images; let i = index" (click)="select(img)" [class.active]="(selectedImage || p.images[0]) === img" aria-label="Image {{i+1}}">
+          <img [src]="img" [alt]="p.name + ' ' + (i+1)" (error)="onImgError($event)" />
+        </button>
+      </div>
+    </div>
+    <div class="info">
+      <h1>{{ p.name }}</h1>
+      <div class="price">{{ p.price | currency: p.currency }}</div>
+      <p class="desc">{{ p.description }}</p>
+      <div class="policy">
+        <span>🚚 Free Shipping</span>
+        <span>↩️ 7‑day Return</span>
+        <span>🛡️ Quality Assured</span>
+      </div>
+      <div class="pincode">
+        <input placeholder="Check delivery pincode" [(ngModel)]="pin" name="pin" maxlength="6" />
+        <button class="btn" (click)="checkPin()">Check</button>
+        <span class="eta" *ngIf="eta">Estimated delivery by {{ eta }}</span>
+      </div>
+      <div class="actions">
+        <div class="qty">
+          <button class="q" (click)="dec()" aria-label="Decrease quantity">−</button>
+          <input [value]="qty" readonly aria-label="Quantity" />
+          <button class="q" (click)="inc()" aria-label="Increase quantity">＋</button>
+        </div>
+        <button class="btn primary" (click)="addToCart()">Add to Cart</button>
+        <button class="btn wish" type="button" (click)="wishlist.toggle(p.id || p.slug)">{{ wishlist.has(p.id || p.slug) ? '♥︎ Wishlisted' : '♡ Wishlist' }}</button>
+        <a class="btn" routerLink="/cart" *ngIf="added">View Cart</a>
+        <a class="btn" routerLink="/contact">Enquire</a>
+        <a class="btn" target="_blank" rel="noopener" [href]="whatsappProductLink(p)">WhatsApp</a>
+      </div>
+      <div class="added" *ngIf="added">Added to cart ✓</div>
+
+      <div class="offers">
+        <div class="offer">🎉 Festive Offer: Use code CLAY10 for 10% OFF (orders over ₹4,999)</div>
+        <div class="offer">💳 UPI / Cards / Netbanking available</div>
+      </div>
+
+      <div class="details">
+        <h3>Product Details</h3>
+        <table>
+          <tr><th>Category</th><td>{{ p.category }}</td></tr>
+          <tr><th>Tags</th><td>{{ p.tags?.join(', ') || '—' }}</td></tr>
+          <tr><th>SKU</th><td>{{ p.id || p.slug }}</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+<ng-template #pending>
+  <!-- On the server, keep this minimal to avoid flashing 'not found'. -->
+  <section class="container" *ngIf="loaded; else skeleton">
+    <div class="info">
+      <h1>Product not found</h1>
+      <p>We couldn’t find this piece. Explore our latest collections.</p>
+      <a class="btn" routerLink="/collections">Back to Collections</a>
+    </div>
+  </section>
+  <ng-template #skeleton>
+    <section class="container"><div class="info"><h1>Loading…</h1></div></section>
+  </ng-template>
+</ng-template>
+
+<section class="container related" *ngIf="product as prod">
+  <h2>Similar Pieces</h2>
+  <div class="grid">
+    <app-product-card *ngFor="let r of related" [product]="r" />
+  </div>
+</section>
+
+<!-- Sticky add-to-cart on mobile -->
+<div class="sticky-bar" *ngIf="product as p">
+  <div class="inner">
+    <div class="title">{{ p.name }}</div>
+    <div class="price">{{ p.price | currency: p.currency }}</div>
+    <button class="btn primary" (click)="addToCart()">Add to Cart</button>
+  </div>
+  </div>

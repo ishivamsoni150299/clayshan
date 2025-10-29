@@ -1,0 +1,14 @@
+.container { max-width: 1000px; margin: 0 auto; padding: 24px 16px; }
+.bar { display: flex; gap: 10px; margin-bottom: 12px; }
+.btn { border: 1px solid #d1b06b; color: #2b1b0e; padding: 8px 14px; border-radius: 999px; background: #fff; cursor: pointer; }
+.btn.primary { background: #d4af37; border-color: #d4af37; }
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td { text-align: left; padding: 10px; border-bottom: 1px solid #eee; }
+.link { background: none; border: 0; color: #0a66c2; cursor: pointer; }
+.link.danger { color: #b00020; }
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: grid; place-items: center; }
+.modal-inner { background: #fff; width: min(640px, 92%); border-radius: 12px; padding: 16px; }
+.form { display: grid; gap: 10px; }
+input, textarea { padding: 10px 12px; border-radius: 8px; border: 1px solid #ddd; font: inherit; }
+.actions { display: flex; gap: 10px; justify-content: flex-end; }
+
