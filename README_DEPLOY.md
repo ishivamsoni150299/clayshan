@@ -22,11 +22,12 @@ Render (recommended for SSR + Express)
 4. Deploy. Render will build via Dockerfile and expose on port 4000.
 
 Vercel (using Docker)
+Important: Do NOT use the legacy `@vercel/docker` builder. Vercel auto-detects a Dockerfile now. We have removed `vercel.json` so Vercel uses the Dockerfile directly.
 1. Push this repo to GitHub.
 2. In Vercel dashboard: New Project > Import > select this repo.
-3. Vercel will detect vercel.json and Dockerfile and build a container.
+3. Framework preset: “Other”. Root directory: repository root (Dockerfile in root).
 4. Set the environment variables in Project Settings > Environment Variables.
-5. Deploy. Vercel will run the container and route traffic to port 4000.
+5. Deploy. Vercel will build the Dockerfile and run the server on port defined by `PORT` (4000).
 
 Local Production Run
 1. npm ci
@@ -37,4 +38,3 @@ Notes
 - Do not commit real secrets; use the platform’s environment variable settings.
 - If running behind a proxy/CDN, we already respect X-Forwarded-Proto/Host for absolute URLs during SSR.
 - Set your WhatsApp number in src/app/config.ts (WHATSAPP_NUMBER) before launching.
-
