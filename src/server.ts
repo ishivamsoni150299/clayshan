@@ -559,6 +559,43 @@ app.post('/api/contact', async (req, res, next) => {
 });
 
 
+// SEO: robots.txt and sitemap.xml
+app.get('/robots.txt', (req, res) => {
+  const proto = (req.headers['x-forwarded-proto'] as string) || 'http';
+  const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'localhost:4000';
+  const base = `${proto}://${host}`;
+  res.type('text/plain').send(`User-agent: *
+Allow: /
+
+Sitemap: ${base}/sitemap.xml
+`);
+});
+
+app.get('/sitemap.xml', async (req, res) => {
+  const proto = (req.headers['x-forwarded-proto'] as string) || 'http';
+  const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'localhost:4000';
+  const base = `${proto}://${host}`;
+  const urls: string[] = [
+    '/', '/collections', '/about', '/contact'
+  ];
+  try {
+    let slugs: string[] = [];
+    if (supabase) {
+      const { data, error } = await supabase.from('products').select('slug');
+      if (!error && Array.isArray(data)) slugs = data.map((r: any) => r.slug).filter(Boolean);
+    } else {
+      slugs = getFallbackProducts().map((p) => p.slug);
+    }
+    for (const s of slugs) urls.push(`/product/${s}`);
+  } catch {}
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n` +
+    `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` +
+    urls.map(u => `<url><loc>${base}${u}</loc></url>`).join('') +
+    `</urlset>`;
+  res.type('application/xml').send(xml);
+});
+
+
 /**
  * Serve static files from /browser
  */
