@@ -1,10 +1,8 @@
-Deployment Guide (Render + Vercel)
+Deployment Guide (Render)
 
 Overview
-- This is an Angular 20 SSR app with a Node/Express server and Supabase backend.
-- Deploy as a single Node web service. Two easy options are included:
-  1) Render via render.yaml (Docker)
-  2) Vercel via Dockerfile (@vercel/docker)
+- Angular 20 SSR app with a Node/Express server and Supabase backend.
+- Deploy as a single web service on Render using the included Dockerfile and render.yaml.
 
 Environment Variables
 - SUPABASE_URL
@@ -19,15 +17,12 @@ Render (recommended for SSR + Express)
 1. Push this repo to GitHub.
 2. In Render dashboard: New > Blueprint > select this repo (render.yaml is in root).
 3. Set environment variables (SUPABASE_*, ADMIN_EMAILS, Razorpay keys if any).
-4. Deploy. Render will build via Dockerfile and expose on port 4000.
+4. Deploy. Render will build with Node 20 (Dockerfile) and expose on port 4000.
 
-Vercel (using Docker)
-Important: Do NOT use the legacy `@vercel/docker` builder. Vercel auto-detects a Dockerfile now. We have removed `vercel.json` so Vercel uses the Dockerfile directly.
-1. Push this repo to GitHub.
-2. In Vercel dashboard: New Project > Import > select this repo.
-3. Framework preset: “Other”. Root directory: repository root (Dockerfile in root).
-4. Set the environment variables in Project Settings > Environment Variables.
-5. Deploy. Vercel will build the Dockerfile and run the server on port defined by `PORT` (4000).
+Local Production Run
+1. `npm ci`
+2. `npx ng build`
+3. `node dist/clayshan/server/server.mjs` (use Node 20)
 
 Local Production Run
 1. npm ci

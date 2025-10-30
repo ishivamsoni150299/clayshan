@@ -12,7 +12,10 @@ export class AdminService {
     try {
       const req: any = (() => { try { return inject(REQUEST as any, { optional: true }); } catch { return undefined; } })();
       let url: string;
-      if (req) {
+      const envBase: string | undefined = (globalThis as any)?.process?.env?.API_BASE_URL;
+      if (envBase) {
+        url = `${envBase}/api/auth/me`;
+      } else if (req) {
         const origin = `${(req.headers['x-forwarded-proto'] as string) || 'http'}://${(req.headers['x-forwarded-host'] as string) || req.headers.host}`;
         url = `${origin}/api/auth/me`;
       } else if (typeof window === 'undefined') {
@@ -39,7 +42,8 @@ export class AdminService {
   }
 
   async login(password: string) {
-    const res = await fetch('/api/admin/login', {
+    const base = (typeof window === 'undefined') ? ((globalThis as any)?.process?.env?.API_BASE_URL || '') : '';
+    const res = await fetch(`${base || ''}/api/admin/login`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password })
     });
     if (!res.ok) throw new Error('Invalid password');
@@ -47,7 +51,8 @@ export class AdminService {
   }
 
   async loginEmail(email: string, password: string) {
-    const res = await fetch('/api/auth/login', {
+    const base = (typeof window === 'undefined') ? ((globalThis as any)?.process?.env?.API_BASE_URL || '') : '';
+    const res = await fetch(`${base || ''}/api/auth/login`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password })
     });
     if (!res.ok) throw new Error((await res.json())?.error || 'Login failed');
@@ -55,7 +60,8 @@ export class AdminService {
   }
 
   async logout() {
-    await fetch('/api/auth/logout', { method: 'POST' });
+    const base = (typeof window === 'undefined') ? ((globalThis as any)?.process?.env?.API_BASE_URL || '') : '';
+    await fetch(`${base || ''}/api/auth/logout`, { method: 'POST' });
     await this.refresh();
   }
 }

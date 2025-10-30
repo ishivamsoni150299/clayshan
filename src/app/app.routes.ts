@@ -6,6 +6,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/home/home.component').then(m => m.HomeComponent),
   },
   {
+    path: 'wishlist',
+    loadComponent: () => import('./pages/wishlist/wishlist.component').then(m => m.WishlistComponent),
+  },
+  {
     path: 'collections',
     loadComponent: () => import('./pages/collections/collections.component').then(m => m.CollectionsComponent),
   },
@@ -28,6 +32,10 @@ export const routes: Routes = [
   {
     path: 'order/success/:id',
     loadComponent: () => import('./pages/order-success/order-success.component').then(m => m.OrderSuccessComponent),
+  },
+  {
+    path: 'track',
+    loadComponent: () => import('./pages/track-order/track-order.component').then(m => m.TrackOrderComponent),
   },
   {
     path: 'admin/login',

@@ -1,8 +1,9 @@
-import { Component, computed, signal, inject, PLATFORM_ID } from '@angular/core';
+import { Component, computed, signal, inject, PLATFORM_ID, effect } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AdminService } from '../../../services/admin.service';
 import { CartService } from '../../../services/cart.service';
+import { WishlistService } from '../../../services/wishlist.service';
 import { WHATSAPP_NUMBER, WHATSAPP_DEFAULT_MESSAGE, SITE_NAME } from '../../../config';
 
 @Component({
@@ -15,10 +16,14 @@ import { WHATSAPP_NUMBER, WHATSAPP_DEFAULT_MESSAGE, SITE_NAME } from '../../../c
 export class NavbarComponent {
   open = signal(false);
   count = computed(() => this.cart.items().reduce((s, i) => s + i.qty, 0));
+  wishlistCount = computed(() => (this.wishlist.ids().size));
   cartOpen = signal(false);
   items = computed(() => this.cart.items());
   total = computed(() => this.cart.total());
   private platformId = inject(PLATFORM_ID);
+  // Categories dropdown data
+  categories = signal<{ name: string; count: number }[]>([]);
+  showCats = signal(false);
   toggle() { this.open.update(v => !v); }
   close() { this.open.set(false); }
   toggleCart(ev?: Event) { if (ev) { ev.preventDefault(); ev.stopPropagation(); } this.cartOpen.update(v => !v); }
@@ -34,12 +39,22 @@ export class NavbarComponent {
     } catch {}
     return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_DEFAULT_MESSAGE)}`;
   }
-  constructor(public admin: AdminService, public cart: CartService) {
+  constructor(public admin: AdminService, public cart: CartService, public wishlist: WishlistService) {
     // Only refresh on the client to avoid SSR fetch
     if (typeof window !== 'undefined') {
       this.admin.refresh();
       // click outside to close mini-cart
       window.addEventListener('click', () => this.closeCart());
+      fetch('/api/categories').then(r => r.ok ? r.json() : []).then((cats) => {
+        if (Array.isArray(cats)) this.categories.set(cats);
+      }).catch(() => {});
     }
+    // react to cart drawer open requests
+    effect(() => {
+      if (this.cart.openDrawer()) {
+        this.cartOpen.set(true);
+        this.cart.openDrawer.set(false);
+      }
+    });
   }
 }

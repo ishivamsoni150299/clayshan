@@ -20,6 +20,8 @@ services:
         value: product-images
       - key: ADMIN_EMAILS
         sync: false
+      - key: CORS_ORIGIN
+        sync: false
       - key: RAZORPAY_KEY_ID
         sync: false
       - key: RAZORPAY_KEY_SECRET

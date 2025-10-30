@@ -1,0 +1,34 @@
+<section class="container track">
+  <h1>Track My Order</h1>
+  <form class="form" (submit)="track($event)">
+    <label>
+      Order ID
+      <input [value]="id()" (input)="id.set($any($event.target).value)" placeholder="e.g. 7c9a..." required />
+    </label>
+    <label>
+      Email
+      <input type="email" [value]="email()" (input)="email.set($any($event.target).value)" placeholder="your@email.com" required />
+    </label>
+    <button class="btn primary" [disabled]="loading()">{{ loading() ? 'Checking…' : 'Track' }}</button>
+  </form>
+
+  <div class="error" *ngIf="!loading() && error()">{{ error() }}</div>
+
+  <div class="card" *ngIf="order() as o">
+    <div class="row"><b>Status</b><span class="status">{{ (o.status || 'paid') | titlecase }}</span></div>
+    <div class="row"><b>Amount</b><span>{{ o.amount | currency:o.currency }}</span></div>
+    <div class="row" *ngIf="o.razorpay_order_id"><b>Razorpay Order</b><span class="mono">{{ o.razorpay_order_id }}</span></div>
+    <div class="row" *ngIf="o.razorpay_payment_id"><b>Payment ID</b><span class="mono">{{ o.razorpay_payment_id }}</span></div>
+    <div class="row" *ngIf="o.created_at"><b>Placed</b><span>{{ o.created_at | date:'medium' }}</span></div>
+
+    <div class="timeline">
+      <div class="step" *ngFor="let s of steps; let i = index" [class.done]="i <= currentStep(o)" [class.active]="i === currentStep(o)">
+        <div class="dot"></div>
+        <div class="label">{{ s }}</div>
+      </div>
+    </div>
+
+    <div class="eta" *ngIf="eta(o) as d">Estimated delivery by <b>{{ d }}</b></div>
+    <div class="help">Need help? <a [href]="helpWhatsApp()" target="_blank" rel="noopener">Chat on WhatsApp</a></div>
+  </div>
+</section>

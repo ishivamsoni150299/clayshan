@@ -1,16 +1,21 @@
-<a class="card" [routerLink]="['/product', product.slug]">
+<a class="card" appInView [routerLink]="['/product', product.slug]">
   <div class="image-wrap">
-    <img
-      [src]="product.images[0] || 'assets/placeholder.svg'"
-      [alt]="product.name"
-      (error)="onImgError($event)"
-      loading="lazy"
-      width="600"
-      height="600"
-      decoding="async"
-      sizes="(max-width: 700px) 50vw, (max-width: 480px) 100vw, 25vw"
-    />
-    <button class="quick" (click)="add($event)">Add</button>
+    <picture>
+      <source *ngIf="webpCandidate(imageUrl())" [attr.srcset]="webpCandidate(imageUrl())" type="image/webp" />
+      <img
+        [src]="imageUrl()"
+        [alt]="product.name"
+        (error)="onImgError($event)"
+        (load)="onImgLoad()"
+        [class.loaded]="imgLoaded()"
+        loading="lazy"
+        width="600"
+        height="600"
+        decoding="async"
+        sizes="(max-width: 700px) 50vw, (max-width: 480px) 100vw, 25vw"
+      />
+    </picture>
+    <button class="quick" (click)="openQV($event)">Quick view</button>
   </div>
   <div class="info">
     <div class="name">{{ product.name }}</div>
@@ -19,5 +24,27 @@
       <span class="stars" aria-label="Rating">★★★★★</span>
       <span class="count">({{ ratingCount }})</span>
     </div>
+    <button class="cta" (click)="add($event)">Add to cart</button>
+    <div class="toast" *ngIf="added()">Added to cart ✓</div>
   </div>
 </a>
+
+<!-- Quick View Drawer -->
+<div class="drawer" *ngIf="qvOpen()" (click)="closeQV()">
+  <div class="sheet qv-sheet" (click)="$event.stopPropagation()">
+    <div class="qv-grid">
+      <div class="qv-image">
+        <img [src]="product.images?.[0] || 'assets/placeholder.svg'" [alt]="product.name" (error)="onImgError($event)" width="600" height="600" />
+      </div>
+      <div class="qv-info">
+        <div class="name">{{ product.name }}</div>
+        <div class="price">{{ product.price | currency: product.currency }}</div>
+        <p class="meta">{{ product.description }}</p>
+        <div class="qv-actions">
+          <button class="btn primary" (click)="addFromQV()">Add to Cart</button>
+          <a [routerLink]="['/product', product.slug]" class="btn" (click)="closeQV()">View details</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

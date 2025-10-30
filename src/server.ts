@@ -24,16 +24,19 @@ app.use(express.json());
 app.use('/api', (_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 app.use(cookieParser());
 // Basic CORS for API use if needed (same-origin in SSR is typical)
+const CORS_ORIGIN = (process.env['CORS_ORIGIN'] || '').split(',').map(s => s.trim()).filter(Boolean);
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+  const origin = String(req.headers.origin || '');
+  if (CORS_ORIGIN.length > 0) {
+    const allowed = CORS_ORIGIN.includes(origin) ? origin : CORS_ORIGIN[0];
+    res.header('Access-Control-Allow-Origin', allowed);
+  } else {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+  }
   res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
-    return;
-  }
+  if (req.method === 'OPTIONS') { res.sendStatus(200); return; }
   next();
-  return;
 });
 const angularApp = new AngularNodeAppEngine();
 
@@ -124,20 +127,20 @@ seedIfEmpty().catch((e) => console.error('Seeding error', e));
 /** Fallback data when DB is unavailable */
 function getFallbackProducts() {
   const base = [
-    { name: 'Kundan Statement Necklace', slug: 'kundan-statement-necklace', price: 12999, img: '/assets/products/kundan-necklace-1.svg', category: 'Necklaces', tags: ['kundan','gold','statement'] },
-    { name: 'Pearl Drop Earrings', slug: 'pearl-drop-earrings', price: 4999, img: '/assets/products/pearl-earrings-1.svg', category: 'Earrings', tags: ['pearls','minimal'] },
-    { name: 'Temple Coin Bracelet', slug: 'temple-coin-bracelet', price: 6999, img: '/assets/products/coin-bracelet-1.svg', category: 'Bracelets', tags: ['temple','coin'] },
-    { name: 'Gemstone Stack Ring', slug: 'gemstone-stack-ring', price: 3499, img: '/assets/products/stack-ring-1.svg', category: 'Rings', tags: ['gemstone','stackable'] },
+    { name: '925 Silver Kundan Necklace', slug: 'kundan-statement-necklace', price: 12999, img: '/assets/products/kundan-necklace-1.svg', category: 'Necklaces', tags: ['925','silver','kundan','statement'] },
+    { name: '925 Silver Pearl Drop Earrings', slug: 'pearl-drop-earrings', price: 4999, img: '/assets/products/pearl-earrings-1.svg', category: 'Earrings', tags: ['925','silver','pearls','minimal'] },
+    { name: '925 Silver Coin Bracelet', slug: 'temple-coin-bracelet', price: 6999, img: '/assets/products/coin-bracelet-1.svg', category: 'Bracelets', tags: ['925','silver','coin'] },
+    { name: '925 Silver Gemstone Stack Ring', slug: 'gemstone-stack-ring', price: 3499, img: '/assets/products/stack-ring-1.svg', category: 'Rings', tags: ['925','silver','gemstone','stackable'] },
   ];
   const more = [
-    { name: 'Minimal Kundan Pendant', slug: 'minimal-kundan-pendant', price: 5999, img: '/assets/products/kundan-necklace-1.svg', category: 'Necklaces', tags: ['kundan','minimal'] },
-    { name: 'Pearl Stud Earrings', slug: 'pearl-stud-earrings', price: 2999, img: '/assets/products/pearl-earrings-1.svg', category: 'Earrings', tags: ['pearls','stud'] },
-    { name: 'Coin Charm Bracelet', slug: 'coin-charm-bracelet', price: 7499, img: '/assets/products/coin-bracelet-1.svg', category: 'Bracelets', tags: ['charm','coin'] },
-    { name: 'Duo Gemstone Ring', slug: 'duo-gemstone-ring', price: 3799, img: '/assets/products/stack-ring-1.svg', category: 'Rings', tags: ['gemstone','duo'] },
-    { name: 'Layered Kundan Necklace', slug: 'layered-kundan-necklace', price: 14999, img: '/assets/products/kundan-necklace-1.svg', category: 'Necklaces', tags: ['kundan','layered'] },
-    { name: 'Pearl Hoop Earrings', slug: 'pearl-hoop-earrings', price: 5499, img: '/assets/products/pearl-earrings-1.svg', category: 'Earrings', tags: ['pearls','hoop'] },
-    { name: 'Temple Kada Bracelet', slug: 'temple-kada-bracelet', price: 7999, img: '/assets/products/coin-bracelet-1.svg', category: 'Bracelets', tags: ['temple','kada'] },
-    { name: 'Stackable Color Ring', slug: 'stackable-color-ring', price: 3899, img: '/assets/products/stack-ring-1.svg', category: 'Rings', tags: ['stackable','color'] },
+    { name: '925 Silver Minimal Pendant', slug: 'minimal-kundan-pendant', price: 5999, img: '/assets/products/kundan-necklace-1.svg', category: 'Necklaces', tags: ['925','silver','minimal'] },
+    { name: '925 Silver Pearl Studs', slug: 'pearl-stud-earrings', price: 2999, img: '/assets/products/pearl-earrings-1.svg', category: 'Earrings', tags: ['925','silver','pearls','stud'] },
+    { name: '925 Silver Charm Bracelet', slug: 'coin-charm-bracelet', price: 7499, img: '/assets/products/coin-bracelet-1.svg', category: 'Bracelets', tags: ['925','silver','charm'] },
+    { name: '925 Silver Duo Gemstone Ring', slug: 'duo-gemstone-ring', price: 3799, img: '/assets/products/stack-ring-1.svg', category: 'Rings', tags: ['925','silver','gemstone','duo'] },
+    { name: '925 Silver Layered Necklace', slug: 'layered-kundan-necklace', price: 14999, img: '/assets/products/kundan-necklace-1.svg', category: 'Necklaces', tags: ['925','silver','layered'] },
+    { name: '925 Silver Pearl Hoops', slug: 'pearl-hoop-earrings', price: 5499, img: '/assets/products/pearl-earrings-1.svg', category: 'Earrings', tags: ['925','silver','pearls','hoop'] },
+    { name: '925 Silver Kada Bracelet', slug: 'temple-kada-bracelet', price: 7999, img: '/assets/products/coin-bracelet-1.svg', category: 'Bracelets', tags: ['925','silver','kada'] },
+    { name: '925 Silver Stackable Ring', slug: 'stackable-color-ring', price: 3899, img: '/assets/products/stack-ring-1.svg', category: 'Rings', tags: ['925','silver','stackable'] },
   ];
   const all = [...base, ...more];
   return all.map((p) => ({
@@ -146,7 +149,7 @@ function getFallbackProducts() {
     price: p.price,
     currency: 'INR',
     images: [p.img, '/assets/placeholder.svg'],
-    description: 'Handcrafted elegance with a clean, modern silhouette.',
+    description: 'Handcrafted 925 sterling silver with a clean, modern silhouette. Hypoallergenic and rhodium‑plated for lasting shine.',
     category: p.category,
     tags: p.tags,
   }));
@@ -558,6 +561,27 @@ app.post('/api/contact', async (req, res, next) => {
   }
 });
 
+// Public order lookup by id + email (limited fields)
+app.get('/api/orders/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const email = String((req.query as any).email || '').toLowerCase();
+    if (!id || !email) { res.status(400).json({ error: 'Missing id/email' }); return; }
+    if (!supabase) { res.status(404).json({ error: 'Not found' }); return; }
+    const { data, error } = await supabase
+      .from('orders')
+      .select('id, amount, currency, status, created_at, razorpay_order_id, razorpay_payment_id, email')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    if (!data || String(data.email || '').toLowerCase() !== email) { res.status(404).json({ error: 'Not found' }); return; }
+    const { email: _e, ...rest } = data as any;
+    res.json(rest);
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || 'Lookup error' });
+  }
+});
+
 
 // SEO: robots.txt and sitemap.xml
 app.get('/robots.txt', (req, res) => {
@@ -593,6 +617,19 @@ app.get('/sitemap.xml', async (req, res) => {
     urls.map(u => `<url><loc>${base}${u}</loc></url>`).join('') +
     `</urlset>`;
   res.type('application/xml').send(xml);
+});
+
+// Liveness/Readiness
+app.get('/healthz', async (_req, res) => {
+  const status: any = { ok: true, supabase: false };
+  try {
+    if (supabase) {
+      // lightweight check
+      const ping = await supabase.from('products').select('id').limit(1);
+      status.supabase = !ping.error;
+    }
+  } catch {}
+  res.json(status);
 });
 
 

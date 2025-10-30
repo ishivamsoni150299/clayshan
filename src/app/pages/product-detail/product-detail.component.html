@@ -1,20 +1,48 @@
 <nav class="breadcrumbs container"><a routerLink="/">Home</a> / <a routerLink="/collections">Collections</a> / <span>{{ product?.name || 'Loading…' }}</span></nav>
 <section class="container" *ngIf="product as p; else pending">
+  <script type="application/ld+json" *ngIf="jsonLdText" [textContent]="jsonLdText"></script>
   <div class="layout">
     <div class="gallery">
-      <div class="main">
-        <img [src]="selectedImage || p.images[0]" [alt]="p.name" (error)="onImgError($event)" />
-      </div>
       <div class="thumbs">
         <button *ngFor="let img of p.images; let i = index" (click)="select(img)" [class.active]="(selectedImage || p.images[0]) === img" aria-label="Image {{i+1}}">
-          <img [src]="img" [alt]="p.name + ' ' + (i+1)" (error)="onImgError($event)" />
+          <img [src]="img" [alt]="p.name + ' ' + (i+1)" (error)="onImgError($event)" width="92" height="92" loading="lazy" decoding="async" />
         </button>
+      </div>
+      <div class="main" (touchstart)="onTouchStart($event)" (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd()">
+        <button class="nav prev" *ngIf="p.images && p.images.length > 1" (click)="prevImage()" aria-label="Previous image">‹</button>
+        <button class="nav next" *ngIf="p.images && p.images.length > 1" (click)="nextImage()" aria-label="Next image">›</button>
+        <picture>
+          <source *ngIf="webpCandidate(selectedImage || p.images[0])" [attr.srcset]="webpCandidate(selectedImage || p.images[0])" type="image/webp" />
+          <img [src]="selectedImage || p.images[0]" [alt]="p.name" (error)="onImgError($event)" width="1000" height="1000" decoding="async" sizes="(max-width: 900px) 100vw, 50vw"
+               (mouseenter)="zoomIn($event)" (mousemove)="zoomMove($event)" (mouseleave)="zoomOut()"
+               [style.transform]="zoom ? 'scale(1.6)' : 'scale(1)'"
+               [style.transform-origin]="origin" [class.zoom]="zoom" />
+        </picture>
       </div>
     </div>
     <div class="info">
       <h1>{{ p.name }}</h1>
+      <div class="rating"><span class="stars">★★★★★</span> <span class="count">({{ (p.slug?.length || 10) * 7 % 180 + 20 }})</span></div>
       <div class="price">{{ p.price | currency: p.currency }}</div>
       <p class="desc">{{ p.description }}</p>
+      <div class="variants">
+        <div class="group">
+          <div class="label">Color</div>
+          <div class="chips">
+            <button class="chip" [class.active]="tone==='gold'" (click)="setTone('gold')">Gold tone</button>
+            <button class="chip" [class.active]="tone==='rose'" (click)="setTone('rose')">Rose gold</button>
+            <button class="chip" [class.active]="tone==='silver'" (click)="setTone('silver')">Silver</button>
+          </div>
+        </div>
+        <div class="group">
+          <div class="label">Size</div>
+          <div class="chips">
+            <button class="chip" [class.active]="size==='S'" (click)="setSize('S')">S</button>
+            <button class="chip" [class.active]="size==='M'" (click)="setSize('M')">M</button>
+            <button class="chip" [class.active]="size==='L'" (click)="setSize('L')">L</button>
+          </div>
+        </div>
+      </div>
       <div class="policy">
         <span>🚚 Free Shipping</span>
         <span>↩️ 7‑day Return</span>
@@ -36,22 +64,33 @@
         <a class="btn" routerLink="/cart" *ngIf="added">View Cart</a>
         <a class="btn" routerLink="/contact">Enquire</a>
         <a class="btn" target="_blank" rel="noopener" [href]="whatsappProductLink(p)">WhatsApp</a>
+        <button class="btn" type="button" (click)="copyLink()">Copy Link</button>
       </div>
       <div class="added" *ngIf="added">Added to cart ✓</div>
+      <details class="acc" open>
+        <summary>Product Details</summary>
+        <table>
+          <tr><th>Category</th><td>{{ p.category }}</td></tr>
+          <tr><th>Tags</th><td>{{ p.tags?.join(', ') || '—' }}</td></tr>
+          <tr><th>SKU</th><td>{{ p.id || p.slug }}</td></tr>
+          <tr><th>Finish</th><td>{{ tone | titlecase }}</td></tr>
+          <tr><th>Size</th><td>{{ size }}</td></tr>
+        </table>
+      </details>
+      <details class="acc">
+        <summary>Shipping & Returns</summary>
+        <p>Ships in 24–48h. Free shipping across India. 7‑day easy returns.</p>
+      </details>
+      <details class="acc">
+        <summary>Care Instructions</summary>
+        <p>Store in a dry place. Avoid perfumes/chemicals. Wipe with a soft cloth.</p>
+      </details>
 
       <div class="offers">
         <div class="offer">🎉 Festive Offer: Use code CLAY10 for 10% OFF (orders over ₹4,999)</div>
         <div class="offer">💳 UPI / Cards / Netbanking available</div>
       </div>
 
-      <div class="details">
-        <h3>Product Details</h3>
-        <table>
-          <tr><th>Category</th><td>{{ p.category }}</td></tr>
-          <tr><th>Tags</th><td>{{ p.tags?.join(', ') || '—' }}</td></tr>
-          <tr><th>SKU</th><td>{{ p.id || p.slug }}</td></tr>
-        </table>
-      </div>
     </div>
   </div>
 </section>
@@ -81,6 +120,11 @@
   <div class="inner">
     <div class="title">{{ p.name }}</div>
     <div class="price">{{ p.price | currency: p.currency }}</div>
+    <div class="qty">
+      <button class="q" (click)="dec()" aria-label="Decrease quantity">−</button>
+      <input [value]="qty" readonly aria-label="Quantity" />
+      <button class="q" (click)="inc()" aria-label="Increase quantity">＋</button>
+    </div>
     <button class="btn primary" (click)="addToCart()">Add to Cart</button>
   </div>
   </div>

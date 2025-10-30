@@ -1,10 +1,18 @@
 <header class="nav" [class.open]="open()">
   <div class="container">
     <a class="brand" routerLink="/" (click)="close()">Clayshan</a>
+    
     <nav class="links" aria-label="Primary">
-      <a routerLink="/collections" routerLinkActive="active" (click)="close()">Collections</a>
+      <div class="dropdown" (mouseenter)="showCats.set(true)" (mouseleave)="showCats.set(false)">
+        <a routerLink="/collections" routerLinkActive="active" (click)="close()">Collections ▾</a>
+        <div class="panel" *ngIf="showCats() && categories().length">
+          <a *ngFor="let c of categories()" [routerLink]="['/collections']" [queryParams]="{ category: c.name }" (click)="showCats.set(false)">{{ c.name }} ({{ c.count }})</a>
+        </div>
+      </div>
       <a routerLink="/about" routerLinkActive="active" (click)="close()">About</a>
       <a routerLink="/contact" routerLinkActive="active" (click)="close()">Contact</a>
+      <a routerLink="/wishlist" routerLinkActive="active" (click)="close()">Wishlist <span class="count" *ngIf="wishlistCount() > 0">{{ wishlistCount() }}</span></a>
+      <a routerLink="/track" routerLinkActive="active" (click)="close()">Track Order</a>
       <div class="cart-wrap" (click)="$event.stopPropagation()">
         <a href="#" class="cart-link" (click)="toggleCart($event)">Cart <span class="count" *ngIf="count() > 0">{{ count() }}</span></a>
         <div class="mini-cart" *ngIf="cartOpen()">
@@ -13,7 +21,11 @@
             <img [src]="it.image || 'assets/placeholder.svg'" alt="" (error)="imgError($event)" />
             <div class="meta">
               <div class="name">{{ it.name }}</div>
-              <div class="sub">x{{ it.qty }}</div>
+              <div class="qty">
+                <button (click)="cart.dec(it.id)" aria-label="Decrease">−</button>
+                <span>{{ it.qty }}</span>
+                <button (click)="cart.inc(it.id)" aria-label="Increase">＋</button>
+              </div>
             </div>
             <div class="price">{{ it.price * it.qty | currency: it.currency }}</div>
             <button class="remove" (click)="remove(it.id)" aria-label="Remove">×</button>
@@ -38,9 +50,43 @@
       <a routerLink="/collections" (click)="close()">Collections</a>
       <a routerLink="/about" (click)="close()">About</a>
       <a routerLink="/contact" (click)="close()">Contact</a>
+      <a routerLink="/wishlist" (click)="close()">Wishlist <span class="count" *ngIf="wishlistCount() > 0">{{ wishlistCount() }}</span></a>
+      <a routerLink="/track" (click)="close()">Track Order</a>
       <a routerLink="/cart" (click)="close()" class="cart-link">Cart <span class="count" *ngIf="count() > 0">{{ count() }}</span></a>
       <a *ngIf="admin.loggedIn()" routerLink="/admin" (click)="close()">Admin</a>
       <a *ngIf="admin.loggedIn()" routerLink="/admin/orders" (click)="close()">Orders</a>
+    </div>
+  </div>
+  
+  <!-- Mobile cart sheet -->
+  <div class="cart-sheet" *ngIf="cartOpen()" (click)="closeCart()">
+    <div class="inner" (click)="$event.stopPropagation()">
+      <header>
+        <div class="title">Your Cart</div>
+        <button class="close" (click)="closeCart()" aria-label="Close">×</button>
+      </header>
+      <div class="lines" *ngIf="items().length; else emptyCart">
+        <div class="line" *ngFor="let it of items()">
+          <img [src]="it.image || 'assets/placeholder.svg'" alt="" (error)="imgError($event)" />
+          <div class="meta">
+            <div class="name">{{ it.name }}</div>
+            <div class="qty">
+              <button (click)="cart.dec(it.id)" aria-label="Decrease">−</button>
+              <span>{{ it.qty }}</span>
+              <button (click)="cart.inc(it.id)" aria-label="Increase">＋</button>
+            </div>
+          </div>
+          <div class="price">{{ it.price * it.qty | currency: it.currency }}</div>
+          <button class="remove" (click)="remove(it.id)" aria-label="Remove">×</button>
+        </div>
+        <div class="total">
+          <span>Subtotal</span><span>{{ total() | currency: (items()[0]?.currency || 'INR') }}</span>
+        </div>
+        <a routerLink="/cart" class="btn primary" (click)="closeCart()">View Cart & Checkout</a>
+      </div>
+      <ng-template #emptyCart>
+        <div class="empty">Your cart is empty.</div>
+      </ng-template>
     </div>
   </div>
 </header>

@@ -1,9 +1,10 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ProductService } from '../../services/product.service';
 import { ProductCardComponent } from '../../components/shared/product-card/product-card.component';
 import { FormsModule } from '@angular/forms';
 import { SkeletonCardComponent } from '../../components/shared/skeleton-card/skeleton-card.component';
+import { ActivatedRoute, Router } from '@angular/router';
 
 @Component({
   selector: 'app-collections',
@@ -14,9 +15,16 @@ import { SkeletonCardComponent } from '../../components/shared/skeleton-card/ske
 })
 export class CollectionsComponent implements OnInit {
   constructor(public productService: ProductService) {}
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
   query = signal('');
   category = signal<string | null>(null);
   sort = signal<'reco' | 'price_asc' | 'price_desc' | 'name_asc'>('reco');
+  // sticky filter bar helpers
+  setCategory(c: string | null) { this.category.set(c); this.pushUrl(); }
+  setQuery(q: string) { this.query.set(q); this.pushUrlDebounced(); }
+  setSort(s: 'reco'|'price_asc'|'price_desc'|'name_asc') { this.sort.set(s); this.pushUrl(); }
+  clearFilters() { this.query.set(''); this.category.set(null); this.pushUrl(); }
   filtered = computed(() => {
     const q = this.query().toLowerCase();
     const c = this.category();
@@ -34,5 +42,22 @@ export class CollectionsComponent implements OnInit {
   categories = computed(() => Array.from(new Set((this.productService.products() || []).map(p => p.category))));
   ngOnInit(): void {
     this.productService.loadProducts();
+    // initialize from URL
+    this.route.queryParamMap.subscribe((m) => {
+      this.query.set(m.get('q') || '');
+      this.category.set(m.get('category'));
+    });
+  }
+
+  private pushUrl() {
+    const qp: any = {};
+    if (this.query()) qp.q = this.query();
+    if (this.category()) qp.category = this.category();
+    this.router.navigate([], { relativeTo: this.route, queryParams: qp, queryParamsHandling: '' });
+  }
+  private pushUrlTimer: any;
+  private pushUrlDebounced() {
+    clearTimeout(this.pushUrlTimer);
+    this.pushUrlTimer = setTimeout(() => this.pushUrl(), 300);
   }
 }

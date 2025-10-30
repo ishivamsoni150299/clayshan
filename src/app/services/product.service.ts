@@ -26,7 +26,10 @@ export class ProductService {
         try { return inject(REQUEST as any, { optional: true }); } catch { return undefined; }
       })();
       let url: string;
-      if (req) {
+      const envBase: string | undefined = (globalThis as any)?.process?.env?.API_BASE_URL;
+      if (envBase) {
+        url = `${envBase}/api/products`;
+      } else if (req) {
         const origin = `${(req.headers['x-forwarded-proto'] as string) || 'http'}://${(req.headers['x-forwarded-host'] as string) || req.headers.host}`;
         url = `${origin}/api/products`;
       } else if (typeof window === 'undefined') {
@@ -70,7 +73,10 @@ export class ProductService {
         try { return inject(REQUEST as any, { optional: true }); } catch { return undefined; }
       })();
       let url: string;
-      if (req) {
+      const envBase: string | undefined = (globalThis as any)?.process?.env?.API_BASE_URL;
+      if (envBase) {
+        url = `${envBase}/api/products/${slug}`;
+      } else if (req) {
         const origin = `${(req.headers['x-forwarded-proto'] as string) || 'http'}://${(req.headers['x-forwarded-host'] as string) || req.headers.host}`;
         url = `${origin}/api/products/${slug}`;
       } else if (typeof window === 'undefined') {

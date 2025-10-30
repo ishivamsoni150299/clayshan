@@ -1,10 +1,31 @@
 /* Global styles and theme */
 :root {
-  --brand-color: #6b3d14; /* deep brown */
-  --accent-color: #b8860b; /* golden */
-  --bg: #ffffff;
-  --muted: #6b5b4a;
+  /* Clayshan brand palette (warm, elegant) */
+  --brand-900: #2b1b0e;
+  --brand-700: #4a2d10;
+  --brand-600: #6b3d14;
+  --brand-100: #f9f4ec;
+  --accent-color: #d4af37; /* soft gold */
+  --brand-color: var(--brand-600);
+
+  /* Semantic surfaces & text */
+  --bg: #ffffff;                /* page background */
+  --surface: #ffffff;           /* cards, panels */
+  --surface-soft: #fbf8f3;      /* soft section bg */
+  --border: rgba(0,0,0,.08);
+  --text-900: #1f1b16;          /* primary text */
+  --text-700: #3a3127;          /* headings/dark */
+  --text-600: #6b5b4a;          /* muted/body */
+  --muted: var(--text-600);
+
   --heading-font: 'Playfair Display', serif;
+  /* Type scale */
+  --fs-12: 12px; --fs-14: 14px; --fs-16: 16px; --fs-18: 18px; --fs-20: 20px; --fs-24: 24px; --fs-32: 32px; --fs-40: 40px; --fs-56: 56px;
+  /* Spacing */
+  --sp-4: 4px; --sp-8: 8px; --sp-12: 12px; --sp-16: 16px; --sp-24: 24px; --sp-32: 32px; --sp-40: 40px; --sp-48: 48px; --sp-64: 64px;
+  /* Radius & shadows */
+  --radius-card: 12px; --radius-visual: 20px; --radius-pill: 999px;
+  --shadow-s: 0 6px 16px rgba(0,0,0,.08); --shadow-m: 0 12px 32px rgba(0,0,0,.12); --shadow-l: 0 20px 60px rgba(0,0,0,.15);
 }
 
 html, body {
@@ -13,9 +34,40 @@ html, body {
 body {
   margin: 0;
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-  color: #222;
+  color: var(--text-900);
   background: var(--bg);
 }
+
+/* Accessible focus styles */
+:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
+
+/* Larger tap targets on mobile */
+@media (max-width: 700px) {
+  a, button { min-height: 40px; }
+}
+
+/* Type defaults */
+h1, h2, h3 { font-family: var(--heading-font); margin: 0 0 var(--sp-12); color: var(--text-700); }
+h1 { font-size: clamp(var(--fs-32), 6vw, var(--fs-56)); line-height: 1.05; }
+h2 { font-size: clamp(var(--fs-24), 4vw, var(--fs-36,36px)); line-height: 1.15; }
+h3 { font-size: var(--fs-20); line-height: 1.2; }
+p { line-height: 1.6; margin: 0 0 var(--sp-12); }
+
+/* Utilities */
+.container { box-sizing: border-box; max-width: 1200px; margin: 0 auto; padding: 0 var(--sp-16); }
+.section { padding: var(--sp-40) 0 var(--sp-64); }
+.btn { border: 1px solid var(--accent-color); color: var(--brand-900); padding: 10px 16px; border-radius: var(--radius-pill); text-decoration: none; font-weight: 600; background: transparent; cursor: pointer; transition: background-color .15s ease, color .15s ease, filter .15s ease; }
+.btn.primary { background: var(--accent-color); border-color: var(--accent-color); color: var(--brand-900); }
+.btn:hover { filter: brightness(0.98); }
+.btn:disabled { opacity: .6; cursor: not-allowed; }
+.pill-input { background: var(--brand-100); border: 1px solid rgba(0,0,0,.06); border-radius: var(--radius-pill); padding: 6px 10px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); box-shadow: var(--shadow-s); }
+.panel { background: var(--surface); border:1px solid var(--border); border-radius: var(--radius-card); box-shadow: var(--shadow-m); }
+.drawer { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: grid; place-items: end; z-index: 95; }
+.drawer .sheet { width: 100%; max-height: 75vh; background: #fff; border-top-left-radius: var(--radius-card); border-top-right-radius: var(--radius-card); padding: var(--sp-12); box-shadow: 0 -10px 30px rgba(0,0,0,.25); overflow:auto; }
+.chips { display: flex; gap: 8px; overflow-x: auto; }
+.chip { padding: 6px 10px; border-radius: var(--radius-pill); border: 1px solid var(--border); background: var(--surface); }
+.chip.active { background: var(--brand-100); border-color: #eadfcb; }
 
 /* Utility container */
 .container { box-sizing: border-box; }
@@ -25,4 +77,23 @@ html { scroll-behavior: smooth; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
   html { scroll-behavior: auto; }
+}
+
+/* Global stagger helpers for in-view elements in common grids */
+@media (prefers-reduced-motion: no-preference) {
+  .grid > .card,
+  .categories .cat-grid > .cat,
+  .by-price .tiles > .tile,
+  .testimonials .wrap > .card,
+  .footer .container > .col {
+    transition-delay: 0ms;
+  }
+  .grid > .card:nth-child(1), .categories .cat-grid > .cat:nth-child(1), .by-price .tiles > .tile:nth-child(1), .testimonials .wrap > .card:nth-child(1), .footer .container > .col:nth-child(1) { transition-delay: 40ms; }
+  .grid > .card:nth-child(2), .categories .cat-grid > .cat:nth-child(2), .by-price .tiles > .tile:nth-child(2), .testimonials .wrap > .card:nth-child(2), .footer .container > .col:nth-child(2) { transition-delay: 80ms; }
+  .grid > .card:nth-child(3), .categories .cat-grid > .cat:nth-child(3), .by-price .tiles > .tile:nth-child(3), .testimonials .wrap > .card:nth-child(3), .footer .container > .col:nth-child(3) { transition-delay: 120ms; }
+  .grid > .card:nth-child(4), .categories .cat-grid > .cat:nth-child(4), .by-price .tiles > .tile:nth-child(4), .testimonials .wrap > .card:nth-child(4), .footer .container > .col:nth-child(4) { transition-delay: 160ms; }
+  .grid > .card:nth-child(5), .categories .cat-grid > .cat:nth-child(5), .by-price .tiles > .tile:nth-child(5), .testimonials .wrap > .card:nth-child(5), .footer .container > .col:nth-child(5) { transition-delay: 200ms; }
+  .grid > .card:nth-child(6), .categories .cat-grid > .cat:nth-child(6), .by-price .tiles > .tile:nth-child(6), .testimonials .wrap > .card:nth-child(6), .footer .container > .col:nth-child(6) { transition-delay: 240ms; }
+  .grid > .card:nth-child(7), .categories .cat-grid > .cat:nth-child(7), .by-price .tiles > .tile:nth-child(7), .testimonials .wrap > .card:nth-child(7), .footer .container > .col:nth-child(7) { transition-delay: 280ms; }
+  .grid > .card:nth-child(8), .categories .cat-grid > .cat:nth-child(8), .by-price .tiles > .tile:nth-child(8), .testimonials .wrap > .card:nth-child(8), .footer .container > .col:nth-child(8) { transition-delay: 320ms; }
 }

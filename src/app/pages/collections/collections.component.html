@@ -1,17 +1,24 @@
 <section class="container collections">
   <h1>Collections</h1>
-  <div class="toolbar">
-    <input [(ngModel)]="query" type="search" placeholder="Search jewellery..." />
-    <select [(ngModel)]="category">
-      <option [ngValue]="null">All categories</option>
-      <option *ngFor="let c of categories()" [ngValue]="c">{{ c }}</option>
-    </select>
-    <select [(ngModel)]="sort">
-      <option [ngValue]="'reco'">Recommended</option>
-      <option [ngValue]="'price_asc'">Price: Low to High</option>
-      <option [ngValue]="'price_desc'">Price: High to Low</option>
-      <option [ngValue]="'name_asc'">Name: A–Z</option>
-    </select>
+  <div class="toolbar sticky">
+    <div class="row">
+      <input [value]="query()" (input)="setQuery($any($event.target).value)" type="search" placeholder="Search jewellery..." />
+      <select [ngModel]="category()" (ngModelChange)="setCategory($event)">
+        <option [ngValue]="null">All categories</option>
+        <option *ngFor="let c of categories()" [ngValue]="c">{{ c }}</option>
+      </select>
+      <select [ngModel]="sort()" (ngModelChange)="setSort($event)">
+        <option [ngValue]="'reco'">Recommended</option>
+        <option [ngValue]="'price_asc'">Price: Low to High</option>
+        <option [ngValue]="'price_desc'">Price: High to Low</option>
+        <option [ngValue]="'name_asc'">Name: A–Z</option>
+      </select>
+      <button class="link" *ngIf="query() || category()" (click)="clearFilters()">Clear</button>
+    </div>
+    <div class="chips">
+      <button class="chip" [class.active]="!category()" (click)="setCategory(null)">All</button>
+      <button class="chip" *ngFor="let c of categories()" [class.active]="category()===c" (click)="setCategory(c)">{{ c }}</button>
+    </div>
   </div>
   <div class="grid">
     <ng-container *ngIf="productService.status() === 'loading'">
@@ -22,4 +29,3 @@
     </ng-container>
   </div>
 </section>
-

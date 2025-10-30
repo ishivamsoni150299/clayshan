@@ -12,6 +12,8 @@ export interface CartItem {
 @Injectable({ providedIn: 'root' })
 export class CartService {
   items = signal<CartItem[]>([]);
+  // UI integration: request the cart drawer to open (mobile)
+  openDrawer = signal(false);
 
   constructor() {
     // hydrate
@@ -35,6 +37,25 @@ export class CartService {
     this.items.set([...cur]);
   }
 
+  setQty(id: string, qty: number) {
+    const cur = this.items();
+    const idx = cur.findIndex((i) => i.id === id);
+    if (idx < 0) return;
+    if (qty <= 0) { this.remove(id); return; }
+    cur[idx] = { ...cur[idx], qty };
+    this.items.set([...cur]);
+  }
+
+  inc(id: string) {
+    const it = this.items().find(i => i.id === id); if (!it) return;
+    this.setQty(id, it.qty + 1);
+  }
+
+  dec(id: string) {
+    const it = this.items().find(i => i.id === id); if (!it) return;
+    this.setQty(id, it.qty - 1);
+  }
+
   remove(id: string) {
     this.items.set(this.items().filter((i) => i.id !== id));
   }
@@ -42,5 +63,8 @@ export class CartService {
   clear() { this.items.set([]); }
 
   total(): number { return this.items().reduce((s, i) => s + i.price * i.qty, 0); }
-}
 
+  requestOpenDrawer() {
+    this.openDrawer.set(true);
+  }
+}
