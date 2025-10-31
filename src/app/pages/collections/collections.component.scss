@@ -1,4 +1,9 @@
 .container { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
+.ptr { overflow: hidden; transition: height .2s ease; }
+.ptr .inner { display: flex; align-items: center; gap: 10px; height: 100%; justify-content: center; color: var(--text-600); }
+.ptr .arrow { font-size: 16px; transition: transform .1s linear; }
+.ptr .spinner { width: 16px; height: 16px; border: 2px solid rgba(0,0,0,.15); border-top-color: var(--brand-600); border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 h1 { font-family: var(--heading-font); margin: 0 0 12px; color: var(--text-700); }
 .toolbar { display: grid; gap: 10px; margin: 10px 0 16px; }
 .toolbar.sticky { position: sticky; top: 64px; z-index: 30; background: var(--bg); padding: 8px 0; border-bottom: 1px solid var(--border); }

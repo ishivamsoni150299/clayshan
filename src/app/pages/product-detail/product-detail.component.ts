@@ -67,6 +67,11 @@ export class ProductDetailComponent implements OnInit, AfterViewInit, OnDestroy 
   }
   private get images(): string[] { return (this.product?.images || []).filter(Boolean); }
   private keyListener?: (ev: KeyboardEvent) => void;
+  // Fullscreen lightbox (mobile-friendly)
+  fsOpen = false;
+  fsZoom = 1;
+  fsTx = 0; fsTy = 0;
+  private fsStartX = 0; private fsStartY = 0; private fsLastX = 0; private fsLastY = 0; private fsMoveX = 0;
   constructor(private route: ActivatedRoute, private productService: ProductService, private cart: CartService, public wishlist: WishlistService, private cdr: ChangeDetectorRef, private meta: Meta, private title: Title) {}
   jsonLdText = '';
   async ngOnInit(): Promise<void> {
@@ -155,6 +160,24 @@ export class ProductDetailComponent implements OnInit, AfterViewInit, OnDestroy 
 
   // Gallery state
   select(img: string) { this.selectedImage = img; }
+  openFs() { this.fsOpen = true; this.fsZoom = 1; this.fsTx = 0; this.fsTy = 0; }
+  closeFs() { this.fsOpen = false; this.fsZoom = 1; this.fsTx = 0; this.fsTy = 0; }
+  toggleFsZoom() { this.fsZoom = this.fsZoom === 1 ? 2 : 1; if (this.fsZoom === 1) { this.fsTx = 0; this.fsTy = 0; } }
+  fsTouchStart(ev: TouchEvent) { this.fsStartX = ev.touches?.[0]?.clientX ?? 0; this.fsStartY = ev.touches?.[0]?.clientY ?? 0; this.fsLastX = this.fsStartX; this.fsLastY = this.fsStartY; this.fsMoveX = 0; }
+  fsTouchMove(ev: TouchEvent) {
+    const x = ev.touches?.[0]?.clientX ?? 0; const y = ev.touches?.[0]?.clientY ?? 0;
+    const dx = x - this.fsLastX; const dy = y - this.fsLastY;
+    this.fsLastX = x; this.fsLastY = y; this.fsMoveX += dx;
+    if (this.fsZoom > 1) { this.fsTx += dx; this.fsTy += dy; }
+  }
+  fsTouchEnd() {
+    // swipe navigation only when not zoomed
+    if (this.fsZoom === 1) {
+      const threshold = 40;
+      if (this.fsMoveX > threshold) this.prevImage(); else if (this.fsMoveX < -threshold) this.nextImage();
+    }
+    this.fsMoveX = 0;
+  }
   onImgError(ev: Event) {
     const el = ev.target as HTMLImageElement;
     if (!el || !el.src) return;

@@ -8,7 +8,7 @@
           <img [src]="img" [alt]="p.name + ' ' + (i+1)" (error)="onImgError($event)" width="92" height="92" loading="lazy" decoding="async" />
         </button>
       </div>
-      <div class="main" (touchstart)="onTouchStart($event)" (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd()">
+      <div class="main" (touchstart)="onTouchStart($event)" (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd()" (click)="openFs()">
         <button class="nav prev" *ngIf="p.images && p.images.length > 1" (click)="prevImage()" aria-label="Previous image">‹</button>
         <button class="nav next" *ngIf="p.images && p.images.length > 1" (click)="nextImage()" aria-label="Next image">›</button>
         <picture>
@@ -114,6 +114,24 @@
     <app-product-card *ngFor="let r of related" [product]="r" />
   </div>
 </section>
+
+<!-- Fullscreen lightbox -->
+<div class="lightbox" *ngIf="fsOpen" (click)="closeFs()">
+  <div class="inner" (click)="$event.stopPropagation()">
+    <button class="close" (click)="closeFs()" aria-label="Close">×</button>
+    <button class="nav prev" (click)="prevImage()" aria-label="Previous">‹</button>
+    <button class="nav next" (click)="nextImage()" aria-label="Next">›</button>
+    <div class="canvas" (touchstart)="fsTouchStart($event)" (touchmove)="fsTouchMove($event)" (touchend)="fsTouchEnd()" (dblclick)="toggleFsZoom()">
+      <img [src]="selectedImage || product?.images?.[0]" [alt]="product?.name || ''"
+           [style.transform]="'translate('+fsTx+'px,'+fsTy+'px) scale('+fsZoom+')'" />
+    </div>
+    <div class="thumbs">
+      <button *ngFor="let img of product?.images || []" (click)="select(img)" [class.active]="(selectedImage || product?.images?.[0])===img">
+        <img [src]="img" [alt]="product?.name || ''" />
+      </button>
+    </div>
+  </div>
+  </div>
 
 <!-- Sticky add-to-cart on mobile -->
 <div class="sticky-bar" *ngIf="product as p">

@@ -72,6 +72,12 @@ export class CollectionsComponent implements OnInit, AfterViewInit, OnDestroy {
   more() { this.visible.set(this.visible() + 12); }
   @ViewChild('sentinel', { static: false }) sentinel?: ElementRef<HTMLElement>;
   private io?: IntersectionObserver;
+  // Pull-to-refresh (mobile)
+  pulling = signal(false);
+  pullY = signal(0);
+  refreshing = signal(false);
+  private startY = 0;
+  angle() { return Math.min(180, this.pullY() * 3); }
   ngOnInit(): void {
     this.productService.loadProducts();
     // initialize from URL
@@ -101,6 +107,34 @@ export class CollectionsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.io?.disconnect();
+  }
+
+  // Pull-to-refresh handlers
+  onTouchStart(ev: TouchEvent) {
+    if (typeof window === 'undefined') return;
+    if (window.scrollY > 0) return; // only when at top
+    this.startY = ev.touches?.[0]?.clientY ?? 0;
+    this.pullY.set(0);
+    this.pulling.set(true);
+  }
+  onTouchMove(ev: TouchEvent) {
+    if (!this.pulling()) return;
+    const y = ev.touches?.[0]?.clientY ?? 0;
+    const dy = Math.max(0, y - this.startY);
+    // apply resistance to feel natural
+    const dist = Math.round(dy * 0.5);
+    this.pullY.set(Math.min(140, dist));
+  }
+  async onTouchEnd() {
+    if (!this.pulling()) return;
+    const shouldRefresh = this.pullY() > 60;
+    this.pulling.set(false);
+    if (shouldRefresh) {
+      this.refreshing.set(true);
+      try { await this.productService.loadProducts(); } catch {}
+      this.refreshing.set(false);
+    }
+    this.pullY.set(0);
   }
 
   private pushUrl() {

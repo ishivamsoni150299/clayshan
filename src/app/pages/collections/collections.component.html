@@ -1,4 +1,11 @@
-<section class="container collections">
+<section class="container collections" (touchstart)="onTouchStart($event)" (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd()">
+  <div class="ptr" [style.height.px]="pullY()" [class.refreshing]="refreshing()">
+    <div class="inner">
+      <div class="spinner" *ngIf="refreshing(); else arrow"></div>
+      <ng-template #arrow><div class="arrow" [style.transform]="'rotate(' + angle() + 'deg)'">↻</div></ng-template>
+      <div class="msg">{{ refreshing() ? 'Refreshing…' : (pullY()>60 ? 'Release to refresh' : 'Pull to refresh') }}</div>
+    </div>
+  </div>
   <h1>Collections</h1>
   <div class="toolbar sticky">
     <div class="row desktop">
