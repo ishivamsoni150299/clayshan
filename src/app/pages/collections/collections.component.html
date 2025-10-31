@@ -23,6 +23,13 @@
       <button class="chip" [class.active]="!category()" (click)="setCategory(null)">All</button>
       <button class="chip" *ngFor="let c of categories()" [class.active]="category()===c" (click)="setCategory(c)">{{ c }}</button>
     </div>
+    <div class="active-chips" *ngIf="hasActive()">
+      <button class="chip active" *ngIf="query()">“{{ query() }}” <span class="x" (click)="clearQuery()">×</span></button>
+      <button class="chip active" *ngIf="category()">{{ category() }} <span class="x" (click)="clearCategory()">×</span></button>
+      <button class="chip active" *ngIf="min()!=null">Min ₹{{ min() }} <span class="x" (click)="clearMin()">×</span></button>
+      <button class="chip active" *ngIf="max()!=null">Max ₹{{ max() }} <span class="x" (click)="clearMax()">×</span></button>
+      <button class="chip clear-all" (click)="clearFilters()">Reset</button>
+    </div>
   </div>
   <div class="grid">
     <ng-container *ngIf="productService.status() === 'loading'">
@@ -70,7 +77,7 @@
         <option [ngValue]="'name_asc'">Name: A–Z</option>
       </select>
     </div>
-    <div class="actions">
+    <div class="sticky-actions">
       <button class="btn" (click)="clearFilters()">Clear</button>
       <button class="btn primary" (click)="closeFilters()">Apply</button>
     </div>

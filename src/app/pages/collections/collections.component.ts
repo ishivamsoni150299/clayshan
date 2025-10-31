@@ -32,6 +32,13 @@ export class CollectionsComponent implements OnInit, AfterViewInit, OnDestroy {
   clearFilters() { this.query.set(''); this.category.set(null); this.min.set(null); this.max.set(null); this.pushUrl(); }
   openFilters() { this.filtersOpen.set(true); }
   closeFilters() { this.filtersOpen.set(false); }
+
+  // Active chips helpers
+  hasActive(): boolean { return !!(this.query() || this.category() || this.min() != null || this.max() != null); }
+  clearQuery() { this.query.set(''); this.pushUrl(); }
+  clearCategory() { this.category.set(null); this.pushUrl(); }
+  clearMin() { this.min.set(null); this.pushUrl(); }
+  clearMax() { this.max.set(null); this.pushUrl(); }
   filtered = computed(() => {
     const q = this.query().toLowerCase();
     const c = this.category();

@@ -9,6 +9,10 @@ h1 { font-family: var(--heading-font); margin: 0 0 12px; color: var(--text-700);
 .toolbar .chips { display: flex; gap: 8px; flex-wrap: nowrap; overflow-x: auto; padding-top: 4px; }
 .chip { padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; }
 .chip.active { background: var(--brand-100,#f9f4ec); border-color: #eadfcb; }
+.active-chips { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 4px; }
+.active-chips .chip { transition: transform .15s ease, opacity .15s ease; }
+.active-chips .chip .x { margin-left: 6px; font-weight: 800; }
+.active-chips .clear-all { border-color: #f0d9d9; background: #fff7f7; }
 .link { background: transparent; border: 0; color: var(--brand-600); cursor: pointer; font-weight: 700; }
 @media (max-width: 900px) {
   .toolbar .row.desktop { display: none; }
@@ -33,4 +37,4 @@ input[type="search"], select { padding: 8px 10px; border-radius: 8px; border: 1p
 .filter-sheet input[type="search"], .filter-sheet select, .filter-sheet input[type="number"] { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text-900); }
 .filter-sheet .range { display: grid; gap: 4px; }
 .filter-sheet .range-values { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.filter-sheet .actions { display: flex; gap: 10px; justify-content: flex-end; padding-top: 8px; border-top: 1px solid var(--border); margin-top: 8px; }
+.sticky-actions { position: sticky; bottom: 0; display: flex; gap: 10px; justify-content: space-between; background: var(--surface); padding: 10px; border-top: 1px solid var(--border); margin-top: 10px; padding-bottom: max(10px, env(safe-area-inset-bottom)); box-shadow: 0 -4px 20px rgba(0,0,0,.06); }
