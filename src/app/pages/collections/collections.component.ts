@@ -20,18 +20,29 @@ export class CollectionsComponent implements OnInit, AfterViewInit, OnDestroy {
   query = signal('');
   category = signal<string | null>(null);
   sort = signal<'reco' | 'price_asc' | 'price_desc' | 'name_asc'>('reco');
+  min = signal<number | null>(null);
+  max = signal<number | null>(null);
+  filtersOpen = signal(false);
   // sticky filter bar helpers
   setCategory(c: string | null) { this.category.set(c); this.pushUrl(); }
   setQuery(q: string) { this.query.set(q); this.pushUrlDebounced(); }
   setSort(s: 'reco'|'price_asc'|'price_desc'|'name_asc') { this.sort.set(s); this.pushUrl(); }
-  clearFilters() { this.query.set(''); this.category.set(null); this.pushUrl(); }
+  setMin(v: number | null) { this.min.set(v); this.pushUrlDebounced(); }
+  setMax(v: number | null) { this.max.set(v); this.pushUrlDebounced(); }
+  clearFilters() { this.query.set(''); this.category.set(null); this.min.set(null); this.max.set(null); this.pushUrl(); }
+  openFilters() { this.filtersOpen.set(true); }
+  closeFilters() { this.filtersOpen.set(false); }
   filtered = computed(() => {
     const q = this.query().toLowerCase();
     const c = this.category();
+    const min = this.min();
+    const max = this.max();
     let list = (this.productService.products() || []).filter(p => {
       const matchesQ = !q || p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q);
       const matchesC = !c || p.category === c;
-      return matchesQ && matchesC;
+      const matchesMin = min == null || p.price >= min;
+      const matchesMax = max == null || p.price <= max;
+      return matchesQ && matchesC && matchesMin && matchesMax;
     });
     const s = this.sort();
     if (s === 'price_asc') list = list.sort((a,b) => a.price - b.price);
@@ -40,6 +51,14 @@ export class CollectionsComponent implements OnInit, AfterViewInit, OnDestroy {
     return list;
   });
   categories = computed(() => Array.from(new Set((this.productService.products() || []).map(p => p.category))));
+  extentMin = computed(() => {
+    const prices = (this.productService.products() || []).map(p => p.price);
+    return prices.length ? Math.min(...prices) : 0;
+  });
+  extentMax = computed(() => {
+    const prices = (this.productService.products() || []).map(p => p.price);
+    return prices.length ? Math.max(...prices) : 20000;
+  });
   // Infinite scroll state
   visible = signal(12);
   items = computed(() => this.filtered().slice(0, this.visible()));
@@ -52,6 +71,9 @@ export class CollectionsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.route.queryParamMap.subscribe((m) => {
       this.query.set(m.get('q') || '');
       this.category.set(m.get('category'));
+      const s = m.get('sort') as any; if (s) this.sort.set(s);
+      const min = m.get('min'); this.min.set(min ? Number(min) : null);
+      const max = m.get('max'); this.max.set(max ? Number(max) : null);
     });
   }
 
@@ -78,6 +100,9 @@ export class CollectionsComponent implements OnInit, AfterViewInit, OnDestroy {
     const qp: any = {};
     if (this.query()) qp.q = this.query();
     if (this.category()) qp.category = this.category();
+    if (this.sort() && this.sort() !== 'reco') qp.sort = this.sort();
+    if (this.min() != null) qp.min = this.min();
+    if (this.max() != null) qp.max = this.max();
     this.router.navigate([], { relativeTo: this.route, queryParams: qp, queryParamsHandling: '' });
   }
   private pushUrlTimer: any;
