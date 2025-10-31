@@ -44,6 +44,8 @@ body {
 /* Larger tap targets on mobile */
 @media (max-width: 700px) {
   a, button { min-height: 40px; }
+  /* Reserve space for bottom nav and sticky PDP bar */
+  body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
 }
 
 /* Type defaults */

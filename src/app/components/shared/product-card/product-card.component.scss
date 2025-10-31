@@ -40,3 +40,12 @@
 .qv-info .meta { color: var(--text-600); margin-bottom: 10px; }
 .qv-actions { display: flex; gap: 10px; }
 @media (max-width: 800px) { .qv-grid { grid-template-columns: 1fr; } }
+
+/* Mobile dense layout tweaks */
+@media (max-width: 700px) {
+  .name { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.6em; }
+  .meta { display: none; }
+  .cta { padding: 8px 10px; border-radius: 6px; font-weight: 700; }
+  /* Show Quick button always to mimic fast‑add behaviour */
+  .quick { opacity: 1; transform: none; }
+}
