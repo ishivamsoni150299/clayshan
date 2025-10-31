@@ -25,7 +25,8 @@
       <app-skeleton-card *ngFor="let i of [1,2,3,4,5,6,7,8,9,10,11,12]"></app-skeleton-card>
     </ng-container>
     <ng-container *ngIf="productService.status() !== 'loading'">
-      <app-product-card *ngFor="let p of filtered()" [product]="p" />
+      <app-product-card *ngFor="let p of items()" [product]="p" />
+      <div #sentinel class="sentinel" aria-hidden="true"></div>
     </ng-container>
   </div>
 </section>

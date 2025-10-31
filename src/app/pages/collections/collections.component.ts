@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed, inject } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy, signal, computed, inject, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ProductService } from '../../services/product.service';
 import { ProductCardComponent } from '../../components/shared/product-card/product-card.component';
@@ -13,7 +13,7 @@ import { ActivatedRoute, Router } from '@angular/router';
   styleUrls: ['./collections.component.scss'],
   templateUrl: './collections.component.html',
 })
-export class CollectionsComponent implements OnInit {
+export class CollectionsComponent implements OnInit, AfterViewInit, OnDestroy {
   constructor(public productService: ProductService) {}
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -40,6 +40,12 @@ export class CollectionsComponent implements OnInit {
     return list;
   });
   categories = computed(() => Array.from(new Set((this.productService.products() || []).map(p => p.category))));
+  // Infinite scroll state
+  visible = signal(12);
+  items = computed(() => this.filtered().slice(0, this.visible()));
+  more() { this.visible.set(this.visible() + 12); }
+  @ViewChild('sentinel', { static: false }) sentinel?: ElementRef<HTMLElement>;
+  private io?: IntersectionObserver;
   ngOnInit(): void {
     this.productService.loadProducts();
     // initialize from URL
@@ -47,6 +53,25 @@ export class CollectionsComponent implements OnInit {
       this.query.set(m.get('q') || '');
       this.category.set(m.get('category'));
     });
+  }
+
+  ngAfterViewInit(): void {
+    // Setup infinite scroll observer on the client only
+    if (typeof window === 'undefined') return;
+    const el = this.sentinel?.nativeElement;
+    if (!el || !('IntersectionObserver' in window)) return;
+    this.io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) {
+          this.more();
+        }
+      }
+    }, { rootMargin: '200px 0px 400px 0px', threshold: 0 });
+    this.io.observe(el);
+  }
+
+  ngOnDestroy(): void {
+    this.io?.disconnect();
   }
 
   private pushUrl() {
