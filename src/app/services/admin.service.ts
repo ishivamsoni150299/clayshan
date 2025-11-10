@@ -41,15 +41,6 @@ export class AdminService {
     }
   }
 
-  async login(password: string) {
-    const base = (typeof window === 'undefined') ? ((globalThis as any)?.process?.env?.API_BASE_URL || '') : '';
-    const res = await fetch(`${base || ''}/api/admin/login`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password })
-    });
-    if (!res.ok) throw new Error('Invalid password');
-    await this.refresh();
-  }
-
   async loginEmail(email: string, password: string) {
     const base = (typeof window === 'undefined') ? ((globalThis as any)?.process?.env?.API_BASE_URL || '') : '';
     const res = await fetch(`${base || ''}/api/auth/login`, {

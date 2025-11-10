@@ -1,14 +1,15 @@
 import { Component, computed, OnInit } from '@angular/core';
-import { CommonModule, CurrencyPipe } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { WishlistService } from '../../services/wishlist.service';
 import { ProductService } from '../../services/product.service';
 import { CartService } from '../../services/cart.service';
+import { ProductCardComponent } from '../../components/shared/product-card/product-card.component';
 
 @Component({
   selector: 'app-wishlist',
   standalone: true,
-  imports: [CommonModule, RouterLink, CurrencyPipe],
+  imports: [CommonModule, RouterLink, ProductCardComponent],
   styleUrls: ['./wishlist.component.scss'],
   templateUrl: './wishlist.component.html',
 })
@@ -28,7 +29,7 @@ export class WishlistComponent implements OnInit {
   addToCart(id: string) {
     const p = this.products().find(x => (x.id || x.slug) === id);
     if (!p) return;
-    this.cart.add({ id: p.id || p.slug, name: p.name, price: p.price, currency: p.currency, image: p.images?.[0] }, 1);
+    this.cart.add({ id: p.id || p.slug, name: p.name, price: p.price, currency: p.currency, image: p.images[0] }, 1);
     try { if (typeof window !== 'undefined' && window.innerWidth <= 800) this.cart.requestOpenDrawer(); } catch {}
   }
 }

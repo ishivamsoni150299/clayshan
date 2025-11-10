@@ -8,5 +8,7 @@ export interface Product {
   description: string;
   category: string;
   tags?: string[];
+  inventory?: number | null;
+  featured?: boolean;
+  variants?: any[];
 }
-

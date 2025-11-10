@@ -1,4 +1,4 @@
-import { Component, OnInit, AfterViewInit, OnDestroy, signal, computed, inject, ElementRef, ViewChild } from '@angular/core';
+﻿import { Component, OnInit, AfterViewInit, OnDestroy, signal, computed, inject, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ProductService } from '../../services/product.service';
 import { ProductCardComponent } from '../../components/shared/product-card/product-card.component';
@@ -22,23 +22,29 @@ export class CollectionsComponent implements OnInit, AfterViewInit, OnDestroy {
   sort = signal<'reco' | 'price_asc' | 'price_desc' | 'name_asc'>('reco');
   min = signal<number | null>(null);
   max = signal<number | null>(null);
+  featured = signal(false);
   filtersOpen = signal(false);
+  // Pin featured items (slugs) at the top of Recommended
+  private pinned = ['sb-MLLM_523187510095'];
+  isPinned(slug: string | undefined | null): boolean { return !!slug && this.pinned.includes(slug); }
   // sticky filter bar helpers
   setCategory(c: string | null) { this.category.set(c); this.pushUrl(); }
   setQuery(q: string) { this.query.set(q); this.pushUrlDebounced(); }
   setSort(s: 'reco'|'price_asc'|'price_desc'|'name_asc') { this.sort.set(s); this.pushUrl(); }
   setMin(v: number | null) { this.min.set(v); this.pushUrlDebounced(); }
   setMax(v: number | null) { this.max.set(v); this.pushUrlDebounced(); }
+  setFeatured(v: boolean) { this.featured.set(!!v); this.pushUrl(); }
   clearFilters() { this.query.set(''); this.category.set(null); this.min.set(null); this.max.set(null); this.pushUrl(); }
   openFilters() { this.filtersOpen.set(true); }
   closeFilters() { this.filtersOpen.set(false); }
 
   // Active chips helpers
-  hasActive(): boolean { return !!(this.query() || this.category() || this.min() != null || this.max() != null); }
+  hasActive(): boolean { return !!(this.query() || this.category() || this.min() != null || this.max() != null || this.featured()); }
   clearQuery() { this.query.set(''); this.pushUrl(); }
   clearCategory() { this.category.set(null); this.pushUrl(); }
   clearMin() { this.min.set(null); this.pushUrl(); }
   clearMax() { this.max.set(null); this.pushUrl(); }
+  clearFeatured() { this.featured.set(false); this.pushUrl(); }
   filtered = computed(() => {
     const q = this.query().toLowerCase();
     const c = this.category();
@@ -51,10 +57,24 @@ export class CollectionsComponent implements OnInit, AfterViewInit, OnDestroy {
       const matchesMax = max == null || p.price <= max;
       return matchesQ && matchesC && matchesMin && matchesMax;
     });
+    if (this.featured()) {
+      list = list.filter(p => this.isPinned(p.slug as any));
+    }
     const s = this.sort();
     if (s === 'price_asc') list = list.sort((a,b) => a.price - b.price);
     if (s === 'price_desc') list = list.sort((a,b) => b.price - a.price);
     if (s === 'name_asc') list = list.sort((a,b) => a.name.localeCompare(b.name));
+    if (s === 'reco') {
+      const order = new Map(this.pinned.map((slug, i) => [slug, i] as const));
+      list = list.sort((a: any, b: any) => {
+        const as = order.has(a.slug) ? order.get(a.slug)! : Number.POSITIVE_INFINITY;
+        const bs = order.has(b.slug) ? order.get(b.slug)! : Number.POSITIVE_INFINITY;
+        if (as !== bs) return as - bs;
+        const at = a.created_at ? Date.parse(a.created_at) : 0;
+        const bt = b.created_at ? Date.parse(b.created_at) : 0;
+        return bt - at;
+      });
+    }
     return list;
   });
   categories = computed(() => Array.from(new Set((this.productService.products() || []).map(p => p.category))));
@@ -87,6 +107,7 @@ export class CollectionsComponent implements OnInit, AfterViewInit, OnDestroy {
       const s = m.get('sort') as any; if (s) this.sort.set(s);
       const min = m.get('min'); this.min.set(min ? Number(min) : null);
       const max = m.get('max'); this.max.set(max ? Number(max) : null);
+      const f = m.get('featured'); this.featured.set(f === '1' || f === 'true');
     });
   }
 
@@ -144,6 +165,7 @@ export class CollectionsComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.sort() && this.sort() !== 'reco') qp.sort = this.sort();
     if (this.min() != null) qp.min = this.min();
     if (this.max() != null) qp.max = this.max();
+    if (this.featured()) qp.featured = 1;
     this.router.navigate([], { relativeTo: this.route, queryParams: qp, queryParamsHandling: '' });
   }
   private pushUrlTimer: any;

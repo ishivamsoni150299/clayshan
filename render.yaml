@@ -26,3 +26,13 @@ services:
         sync: false
       - key: RAZORPAY_KEY_SECRET
         sync: false
+      # Supplier catalog (Silverbene). If you want to run with live supplier-only products,
+      # set NO_DB_CATALOG to 1 and provide SILVERBENE_ACCESS_TOKEN in Render dashboard secrets.
+      - key: NO_DB_CATALOG
+        value: 1
+      - key: SILVERBENE_ACCESS_TOKEN
+        sync: false
+      - key: EXCHANGE_RATE_USD_INR
+        value: 83
+      - key: SUPPLIER_CACHE_TTL_MS
+        value: 300000

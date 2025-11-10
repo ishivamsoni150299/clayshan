@@ -4,26 +4,32 @@
       <div class="logo">Clayshan</div>
       <div class="sub">Modern Indian jewellery crafted for everyday elegance.</div>
     </div>
-    <div class="col" appInView>
-      <div class="head">Main Menu</div>
-      <a routerLink="/">Home</a>
-      <a routerLink="/collections">Collections</a>
-      <a routerLink="/about">About Us</a>
-      <a routerLink="/contact">Contact Us</a>
-      <a routerLink="/track">Track My Order</a>
+    <div class="col collapsible" appInView>
+      <div class="head" (click)="toggleCol($event)">Main Menu</div>
+      <div class="body">
+        <a routerLink="/">Home</a>
+        <a routerLink="/collections">Collections</a>
+        <a routerLink="/about">About Us</a>
+        <a routerLink="/contact">Contact Us</a>
+        <a routerLink="/track">Track My Order</a>
+      </div>
     </div>
-    <div class="col" appInView>
-      <div class="head">Important Links</div>
-      <a routerLink="/contact">Return / Exchange Policy</a>
-      <a routerLink="/contact">Shipping Policy</a>
-      <a routerLink="/contact">Privacy Policy</a>
-      <a routerLink="/contact">Terms & Conditions</a>
+    <div class="col collapsible" appInView>
+      <div class="head" (click)="toggleCol($event)">Important Links</div>
+      <div class="body">
+        <a routerLink="/contact">Return / Exchange Policy</a>
+        <a routerLink="/contact">Shipping Policy</a>
+        <a routerLink="/contact">Privacy Policy</a>
+        <a routerLink="/contact">Terms & Conditions</a>
+      </div>
     </div>
-    <div class="col" appInView>
-      <div class="head">Get in touch</div>
-      <div class="row"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M6.6 2h10.8A1.6 1.6 0 0 1 19 3.6v16.8a1.6 1.6 0 0 1-1.6 1.6H6.6A1.6 1.6 0 0 1 5 20.4V3.6A1.6 1.6 0 0 1 6.6 2zm.9 2a.5.5 0 0 0-.5.5v15a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5v-15a.5.5 0 0 0-.5-.5h-9z"/></svg> +91 86500 27270</div>
-      <div class="row"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M20 4H4a2 2 0 0 0-2 2v.4l10 6.4 10-6.4V6a2 2 0 0 0-2-2Zm0 4.3-8.7 5.6a1 1 0 0 1-1.1 0L1.9 8.3V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8.3Z"/></svg> support@clayshan.com</div>
-      <div class="row"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 2a10 10 0 1 0 7.07 2.93A10 10 0 0 0 12 2Zm-1 6h2v5h3l-4 4-4-4h3Z"/></svg> WhatsApp chat from any product page</div>
+    <div class="col collapsible" appInView>
+      <div class="head" (click)="toggleCol($event)">Get in touch</div>
+      <div class="body">
+        <div class="row"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M6.6 2h10.8A1.6 1.6 0 0 1 19 3.6v16.8a1.6 1.6 0 0 1-1.6 1.6H6.6A1.6 1.6 0 0 1 5 20.4V3.6A1.6 1.6 0 0 1 6.6 2zm.9 2a.5.5 0 0 0-.5.5v15a.5.5 0 0 0 .5.5h9a.5.5 0 0 0 .5-.5v-15a.5.5 0 0 0-.5-.5h-9z"/></svg> +91 86500 27270</div>
+        <div class="row"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M20 4H4a2 2 0 0 0-2 2v.4l10 6.4 10-6.4V6a2 2 0 0 0-2-2Zm0 4.3-8.7 5.6a1 1 0 0 1-1.1 0L1.9 8.3V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8.3Z"/></svg> support@clayshan.com</div>
+        <a class="wh btn" [href]="whUrl()" target="_blank" rel="noopener" aria-label="Chat on WhatsApp">Chat on WhatsApp</a>
+      </div>
       <div class="social">
         <span>Follow us:</span>
         <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5Zm5 5.5A5.5 5.5 0 1 0 17.5 13 5.5 5.5 0 0 0 12 7.5Zm6-1.75a1.25 1.25 0 1 0 1.25 1.25A1.25 1.25 0 0 0 18 5.75Z"/></svg></a>

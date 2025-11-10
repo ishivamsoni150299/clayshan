@@ -12,3 +12,9 @@ img { width: 80px; height: 80px; object-fit: cover; border-radius: 8px; backgrou
 .btn.primary { background: #d4af37; border-color: #d4af37; }
 @media (max-width: 640px) { .row { grid-template-columns: 64px 1fr auto; } .link.danger { grid-column: 3; } }
 
+/* Free shipping banner */
+.free-banner { background: #fff8e7; border: 1px solid #f0e0b5; padding: 10px 12px; border-radius: 10px; margin-bottom: 12px; }
+.free-banner .msg { font-weight: 600; color: #8a6a20; }
+.free-banner .msg.ok { color: #2e7d32; }
+.free-banner .bar { height: 8px; background: #f3e7c6; border-radius: 999px; overflow: hidden; margin-top: 8px; }
+.free-banner .bar .fill { height: 100%; background: linear-gradient(90deg, #d4af37, #f0d77a); width: 0; transition: width .3s ease; }

@@ -1,8 +1,11 @@
-<a class="card" appInView [routerLink]="['/product', product.slug]">
-  <div class="image-wrap">
-    <picture>
+﻿<a class="card" appInView [routerLink]="['/product', product.slug]" (mouseenter)="onCardEnter()" (mouseleave)="onCardLeave()">
+  <div class="image-wrap" (mouseenter)="onCardEnter()" (mouseleave)="onCardLeave()">
+    <span class="badge" *ngIf="featured">Featured</span>
+    <!-- Base layer -->
+    <picture class="layer base">
       <source *ngIf="webpCandidate(imageUrl())" [attr.srcset]="webpCandidate(imageUrl())" type="image/webp" />
       <img
+        class="base"
         [src]="imageUrl()"
         [alt]="product.name"
         (error)="onImgError($event)"
@@ -15,36 +18,52 @@
         sizes="(max-width: 700px) 50vw, (max-width: 480px) 100vw, 25vw"
       />
     </picture>
+    <!-- Overlay layer for crossfade -->
+    <img class="layer overlay" [class.show]="overlayVisible()"
+         [src]="images()[hoverIndex] || 'assets/placeholder.svg'" [alt]="product.name" />
     <button class="quick" (click)="openQV($event)">Quick view</button>
   </div>
   <div class="info">
     <div class="name">{{ product.name }}</div>
     <div class="price">{{ product.price | currency: product.currency }}</div>
     <div class="meta">
-      <span class="stars" aria-label="Rating">★★★★★</span>
+      <span class="stars" aria-label="Rating">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
       <span class="count">({{ ratingCount }})</span>
     </div>
     <button class="cta" (click)="add($event)">Add to cart</button>
-    <div class="toast" *ngIf="added()">Added to cart ✓</div>
+    <div class="toast" *ngIf="added()">Added to cart &#10003;</div>
   </div>
 </a>
 
 <!-- Quick View Drawer -->
 <div class="drawer" *ngIf="qvOpen()" (click)="closeQV()">
-  <div class="sheet qv-sheet" (click)="$event.stopPropagation()">
+  <div class="sheet qv-sheet" role="dialog" aria-modal="true" [attr.aria-labelledby]="'qv-title-'+product.slug" (click)="$event.stopPropagation()">
+    <header class="qv-head">
+      <div class="title" [attr.id]="'qv-title-'+product.slug">{{ product.name }}</div>
+      <button class="close" (click)="closeQV()" aria-label="Close">&times;</button>
+    </header>
     <div class="qv-grid">
-      <div class="qv-image">
-        <img [src]="product.images?.[0] || 'assets/placeholder.svg'" [alt]="product.name" (error)="onImgError($event)" width="600" height="600" />
-      </div>
-      <div class="qv-info">
-        <div class="name">{{ product.name }}</div>
-        <div class="price">{{ product.price | currency: product.currency }}</div>
-        <p class="meta">{{ product.description }}</p>
-        <div class="qv-actions">
-          <button class="btn primary" (click)="addFromQV()">Add to Cart</button>
-          <a [routerLink]="['/product', product.slug]" class="btn" (click)="closeQV()">View details</a>
+      <div class="qv-image" (touchstart)="qvTouchStart($event)" (touchmove)="qvTouchMove($event)" (touchend)="qvTouchEnd()">
+        <button class="nav prev" *ngIf="images().length>1" (click)="prevQV()" aria-label="Previous">&lsaquo;</button>
+        <button class="nav next" *ngIf="images().length>1" (click)="nextQV()" aria-label="Next">&rsaquo;</button>
+        <img [src]="images()[qvIndex()] || product.images[0] || 'assets/placeholder.svg'" [alt]="product.name" (error)="onImgError($event)" width="600" height="600" />
+        <div class="dots" *ngIf="images().length>1">
+          <button *ngFor="let img of images(); let i = index" [class.active]="i===qvIndex()" (click)="selectQV(i)" aria-label="Go to image {{i+1}}"></button>
         </div>
       </div>
+      <div class="qv-info">
+        <div class="price">{{ product.price | currency: product.currency }}</div>
+        <p class="meta">{{ product.description }}</p>
+      </div>
     </div>
+    <footer class="qv-actions">
+      <div class="qty" aria-label="Quantity">
+        <button class="q" (click)="decQV()" aria-label="Decrease">-</button>
+        <input [value]="qvQty()" readonly />
+        <button class="q" (click)="incQV()" aria-label="Increase">+</button>
+      </div>
+      <button class="btn primary" (click)="addFromQV()">Add to Cart</button>
+      <a [routerLink]="['/product', product.slug]" class="btn" (click)="closeQV()">View details</a>
+    </footer>
   </div>
 </div>

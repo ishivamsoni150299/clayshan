@@ -17,7 +17,7 @@ File naming
 Where to store
 - Supabase Storage (bucket: product-images)
   - Path convention: products/YYYY/MM/<uuid-or-slug>.<ext>
-  - Make bucket â€œpublicâ€ so the UI can read images without signed URLs.
+  - Make bucket "public" so the UI can read images without signed URLs.
   - Ensure correct Content-Type on upload (image/webp, image/jpeg, image/png, image/svg+xml).
 
 How UI resolves images
@@ -39,12 +39,12 @@ Updating products
 
 Quality tips
 - Use high-quality source, then compress:
-  - JPG: 75â€“82 quality (visually lossless)
+  - JPG: 75–82 quality (visually lossless)
   - WebP: 70â€“80 quality
 - Remove EXIF/metadata to reduce size.
 
 Accessibility
-- Provide descriptive alt text (e.g., â€œPearl drop earrings in gold-plated settingâ€).
+- Provide descriptive alt text (e.g., "Pearl drop earrings in gold-plated setting").
 
 
 ## Local WebP generation + upload

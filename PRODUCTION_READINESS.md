@@ -85,3 +85,19 @@ Team Setup
   - Use Admin → Products to upload images to Storage, CRUD products, seed sample data
   - Use Admin → Orders for basic order viewing
 
+
+
+Supplier-Only Catalog (Silverbene)
+----------------------------------
+- Enable by setting environment variables:
+  - NO_DB_CATALOG=1
+  - SILVERBENE_ACCESS_TOKEN=your_token_here
+  - EXCHANGE_RATE_USD_INR=83 (or your chosen rate)
+  - SUPPLIER_CACHE_TTL_MS=300000 (5 minutes recommended)
+- Behavior:
+  - GET /api/products aggregates recent windows from Silverbene’s product_list_by_date API
+  - GET /api/products/:slug resolves SKU by slug pattern `sb-<sku>` via product_list
+  - GET /api/categories derives categories from live supplier data
+  - When upstream returns nothing, responses include header X-Supplier-Empty: 1 so the UI can show a notice
+  - Pricing is INR only (USD×EXCHANGE_RATE_USD_INR)
+  - No Supabase products are required in this mode; Supabase remains optional for admin/auth/orders

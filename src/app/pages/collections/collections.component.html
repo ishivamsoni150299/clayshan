@@ -27,7 +27,8 @@
       <div class="summary" *ngIf="category() || min() != null || max() != null || query()">Filtered</div>
     </div>
     <div class="chips">
-      <button class="chip" [class.active]="!category()" (click)="setCategory(null)">All</button>
+      <button class="chip" [class.active]="!category() && !featured()" (click)="setCategory(null); setFeatured(false)">All</button>
+      <button class="chip" [class.active]="featured()" (click)="setFeatured(!featured())">Featured</button>
       <button class="chip" *ngFor="let c of categories()" [class.active]="category()===c" (click)="setCategory(c)">{{ c }}</button>
     </div>
     <div class="active-chips" *ngIf="hasActive()">
@@ -35,6 +36,7 @@
       <button class="chip active" *ngIf="category()">{{ category() }} <span class="x" (click)="clearCategory()">×</span></button>
       <button class="chip active" *ngIf="min()!=null">Min ₹{{ min() }} <span class="x" (click)="clearMin()">×</span></button>
       <button class="chip active" *ngIf="max()!=null">Max ₹{{ max() }} <span class="x" (click)="clearMax()">×</span></button>
+      <button class="chip active" *ngIf="featured()">Featured <span class="x" (click)="clearFeatured()">×</span></button>
       <button class="chip clear-all" (click)="clearFilters()">Reset</button>
     </div>
   </div>
@@ -43,9 +45,15 @@
       <app-skeleton-card *ngFor="let i of [1,2,3,4,5,6,7,8,9,10,11,12]"></app-skeleton-card>
     </ng-container>
     <ng-container *ngIf="productService.status() !== 'loading'">
-      <app-product-card *ngFor="let p of items()" [product]="p" />
+      <app-product-card *ngFor="let p of items()" [product]="p" [featured]="isPinned(p.slug)" />
       <div #sentinel class="sentinel" aria-hidden="true"></div>
     </ng-container>
+    <div class="empty-state" *ngIf="productService.status() !== 'loading' && items().length === 0">
+      <div class="msg">
+        <strong>No live products to show right now.</strong>
+        <div>Try clearing filters or checking again in a moment.</div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -83,6 +91,11 @@
         <option [ngValue]="'price_desc'">Price: High to Low</option>
         <option [ngValue]="'name_asc'">Name: A–Z</option>
       </select>
+
+      <label>Special</label>
+      <div>
+        <label><input type="checkbox" [checked]="featured()" (change)="setFeatured($any($event.target).checked)" /> Featured only</label>
+      </div>
     </div>
     <div class="sticky-actions">
       <button class="btn" (click)="clearFilters()">Clear</button>

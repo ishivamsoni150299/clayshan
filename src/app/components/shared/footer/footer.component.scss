@@ -10,4 +10,12 @@
 .footer .copybar { text-align: center; padding: 12px 16px; background: #2e1c12; color: #efe7d9; font-size: 13px; }
 .footer .social { display: flex; gap: 10px; align-items: center; margin-top: 8px; }
 @media (max-width: 900px) { .footer .container { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 560px) { .footer .container { grid-template-columns: 1fr; } }
+@media (max-width: 560px) {
+  .footer .container { grid-template-columns: 1fr; padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+  .footer .col.collapsible .head { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-top: 1px solid rgba(255,255,255,.08); cursor: pointer; }
+  .footer .col.collapsible .head::after { content: '\25BC'; font-size: 10px; opacity: .8; }
+  .footer .col.collapsible .body { display: none; padding-bottom: 8px; }
+  .footer .col.collapsible.open .body { display: block; }
+  .footer a { padding: 8px 0; margin: 0; }
+}
+.footer .col .wh.btn { display: inline-block; margin-top: 10px; background: #25D366; color: #1a1a1a; border: 0; padding: 8px 12px; border-radius: 999px; text-decoration: none; font-weight: 800; }

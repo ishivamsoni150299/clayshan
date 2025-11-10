@@ -2,10 +2,9 @@
   <div class="container">
     <div class="copy">
       <h1>925 Sterling Silver Jewellery</h1>
-      <p>Handcrafted 925 silver with rhodium finish — hypoallergenic, everyday shine.</p>
+      <p>Handcrafted 925 silver with rhodium finish - hypoallergenic, everyday shine.</p>
       <div class="cta">
         <a routerLink="/collections" class="btn primary">Shop Collections</a>
-        <a [href]="whUrl()" target="_blank" rel="noopener" class="btn" aria-label="Chat on WhatsApp">WhatsApp</a>
       </div>
     </div>
     <div class="hero-image" aria-hidden="true">
@@ -15,14 +14,24 @@
   <div class="ornament" aria-hidden="true"></div>
 </section>
 
+<!-- Supplier empty notice -->
+<section class="notice" *ngIf="productService.supplierEmpty() && !hideSupplierNotice()">
+  <div class="container">
+    <div class="bar">
+      <span>We couldn't fetch live products from the supplier just now. Please try again in a moment.</span>
+      <button class="btn" (click)="hideSupplierNotice.set(true)">Dismiss</button>
+    </div>
+  </div>
+  </section>
+
 <!-- Shop by Price -->
 <section class="section by-price">
   <div class="container">
     <h2 class="center">Shop by Price</h2>
     <div class="tiles">
-      <a class="tile" appInView [routerLink]="['/collections']" [queryParams]="{ max: 999 }">Under â‚¹999</a>
-      <a class="tile" appInView [routerLink]="['/collections']" [queryParams]="{ max: 1999 }">Under â‚¹1,999</a>
-      <a class="tile" appInView [routerLink]="['/collections']" [queryParams]="{ max: 2999 }">Under â‚¹2,999</a>
+      <a class="tile" appInView [routerLink]="['/collections']" [queryParams]="{ max: 999 }">Under &#8377;1,999</a>
+      <a class="tile" appInView [routerLink]="['/collections']" [queryParams]="{ max: 11999 }">Under &#8377;11,999</a>
+      <a class="tile" appInView [routerLink]="['/collections']" [queryParams]="{ max: 12999 }">Under &#8377;12,999</a>
       <a class="tile" appInView [routerLink]="['/collections']" [queryParams]="{ tag: 'gift' }">Premium Gifts</a>
     </div>
   </div>
@@ -38,9 +47,25 @@
       <ng-container *ngIf="productService.status() === 'loading'">
         <app-skeleton-card *ngFor="let i of [1,2,3,4,5,6,7,8]"></app-skeleton-card>
       </ng-container>
-      <ng-container *ngIf="productService.status() !== 'loading' && productService.products() as products">
-        <app-product-card *ngFor="let p of products | slice:0:8" [product]="p" />
+      <ng-container *ngIf="productService.status() !== 'loading' && (productService.products()?.length || 0) > 0; else noLive">
+        <app-product-card *ngFor="let p of featuredProducts() | slice:0:8" [product]="p" [featured]="isPinned(p.slug)" />
       </ng-container>
+      <ng-template #noLive>
+        <div class="empty">No live products found from supplier right now. Please try again shortly.</div>
+      </ng-template>
+    </div>
+  </div>
+</section>
+
+<!-- Recently Viewed (mobile-first; shows after the user visits any PDP) -->
+<section class="section recent" *ngIf="recent().length">
+  <div class="container">
+    <div class="section-head">
+      <h2>Recently Viewed</h2>
+      <a routerLink="/collections" class="link">Continue shopping</a>
+    </div>
+    <div class="grid scroll">
+      <app-product-card *ngFor="let p of recent()" [product]="p" />
     </div>
   </div>
 </section>
@@ -51,26 +76,45 @@
       <h2>Shop by Category</h2>
       <a routerLink="/collections" class="link">Browse all</a>
     </div>
-    <div class="cat-grid">
+    <div class="cat-grid snap">
       <a routerLink="/collections" class="cat" appInView aria-label="Necklaces">
-        <img src="/assets/products/kundan-necklace-1.svg" alt="Necklaces" loading="lazy" decoding="async" width="600" height="450" sizes="(max-width: 900px) 80vw, 25vw" />
-      <span>Necklaces</span>
+        <img [src]="catThumbs()['Necklaces'] || '/assets/products/kundan-necklace-1.svg'" alt="Necklaces" loading="lazy" decoding="async" width="600" height="450" sizes="(max-width: 900px) 80vw, 25vw" />
+        <span>Necklaces</span>
       </a>
       <a routerLink="/collections" class="cat" appInView aria-label="Earrings">
-        <img src="/assets/products/pearl-earrings-1.svg" alt="Earrings" loading="lazy" decoding="async" width="600" height="450" sizes="(max-width: 900px) 80vw, 25vw" />
+        <img [src]="catThumbs()['Earrings'] || '/assets/products/pearl-earrings-1.svg'" alt="Earrings" loading="lazy" decoding="async" width="600" height="450" sizes="(max-width: 900px) 80vw, 25vw" />
         <span>Earrings</span>
       </a>
       <a routerLink="/collections" class="cat" appInView aria-label="Bracelets">
-        <img src="/assets/products/coin-bracelet-1.svg" alt="Bracelets" loading="lazy" decoding="async" width="600" height="450" sizes="(max-width: 900px) 80vw, 25vw" />
+        <img [src]="catThumbs()['Bracelets'] || '/assets/products/coin-bracelet-1.svg'" alt="Bracelets" loading="lazy" decoding="async" width="600" height="450" sizes="(max-width: 900px) 80vw, 25vw" />
         <span>Bracelets</span>
       </a>
       <a routerLink="/collections" class="cat" appInView aria-label="Rings">
-        <img src="/assets/products/stack-ring-1.svg" alt="Rings" loading="lazy" decoding="async" width="600" height="450" sizes="(max-width: 900px) 80vw, 25vw" />
+        <img [src]="catThumbs()['Rings'] || '/assets/products/stack-ring-1.svg'" alt="Rings" loading="lazy" decoding="async" width="600" height="450" sizes="(max-width: 900px) 80vw, 25vw" />
         <span>Rings</span>
+      </a>
+      <a [routerLink]="['/collections']" [queryParams]="{ category: 'Anklets' }" class="cat" appInView aria-label="Anklets">
+        <img [src]="catThumbs()['Anklets'] || '/assets/placeholder.svg'" alt="Anklets" loading="lazy" decoding="async" width="600" height="450" sizes="(max-width: 900px) 80vw, 25vw" />
+        <span>Anklets</span>
       </a>
     </div>
   </div>
 </section>
+
+<!-- One from each category -->
+<section class="section" *ngIf="(fromEachCategory() || []).length">
+  <div class="container">
+    <div class="section-head">
+      <h2>From Each Category</h2>
+      <a routerLink="/collections" class="link">Browse all</a>
+    </div>
+    <div class="grid">
+      <ng-container *ngFor="let entry of fromEachCategory()">
+        <app-product-card [product]="entry[1]"></app-product-card>
+      </ng-container>
+    </div>
+  </div>
+ </section>
 
 <!-- Brand Story / Editorial band -->
 <section class="story">
@@ -82,7 +126,7 @@
     <div class="copy">
       <div class="eyebrow">Jewellery for women who are</div>
       <h2>Destined for Greatness</h2>
-      <p>Inspired by timeless Indian motifs, crafted for modern life. Subtle golds, elegant silhouettes, and everyday comfort â€” made to move with you.</p>
+      <p>Inspired by timeless Indian motifs, crafted for modern life. Subtle golds, elegant silhouettes, and everyday comfort - made to move with you.</p>
       <a routerLink="/collections" class="btn primary">Shop Now</a>
     </div>
   </div>
@@ -94,19 +138,19 @@
     <h2 class="center">Testimonials</h2>
     <div class="wrap">
       <div class="card" appInView>
-        <div class="stars">â˜…â˜…â˜…â˜…â˜…</div>
-        <p>â€œBeautiful jewellery, excellent quality. Adds charm to any event!â€</p>
-        <div class="name">â€” Vanshika Sharma</div>
+        <div class="stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <p>&ldquo;Beautiful jewellery, excellent quality. Adds charm to any event!&rdquo;</p>
+        <div class="name">&mdash; Vanshika Sharma</div>
       </div>
       <div class="card" appInView>
-        <div class="stars">â˜…â˜…â˜…â˜…â˜…</div>
-        <p>â€œGorgeous designs and topâ€‘notch finish. Highly recommended!â€</p>
-        <div class="name">â€” Erum Hayat</div>
+        <div class="stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <p>&ldquo;Gorgeous designs and top-notch finish. Highly recommended!&rdquo;</p>
+        <div class="name">&mdash; Erum Hayat</div>
       </div>
       <div class="card" appInView>
-        <div class="stars">â˜…â˜…â˜…â˜…â˜…</div>
-        <p>â€œAmazing value and quick delivery. My new favourite store.â€</p>
-        <div class="name">â€” Sanya Arora</div>
+        <div class="stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <p>&ldquo;Amazing value and quick delivery. My new favourite store.&rdquo;</p>
+        <div class="name">&mdash; Sanya Arora</div>
       </div>
     </div>
   </div>
@@ -116,13 +160,12 @@
 <section class="newsletter">
   <div class="container">
     <h2>Sign up and save</h2>
-    <p>Get special offers, free giveaways and onceâ€‘inâ€‘aâ€‘lifetime deals.</p>
+    <p>Get special offers, free giveaways and once-in-a-lifetime deals.</p>
     <form class="form" (submit)="subscribe($event)">
       <input type="email" placeholder="Enter your email" [value]="email()" (input)="email.set($any($event.target).value)" required />
-      <button class="btn primary" [disabled]="status()==='sending'">{{ status()==='ok' ? 'Subscribed' : (status()==='sending' ? 'Subscribingâ€¦' : 'Subscribe') }}</button>
+      <button class="btn primary" [disabled]="status()==='sending'">{{ status()==='ok' ? 'Subscribed' : (status()==='sending' ? 'Subscribing...' : 'Subscribe') }}</button>
     </form>
-    <div class="msg ok" *ngIf="status()==='ok'">Thanks! Youâ€™re on the list.</div>
+    <div class="msg ok" *ngIf="status()==='ok'">Thanks! You're on the list.</div>
     <div class="msg err" *ngIf="status()==='error'">Please try again in a moment.</div>
   </div>
 </section>
-

@@ -4,7 +4,7 @@ import { CommonModule } from '@angular/common';
 import { AdminService } from '../../../services/admin.service';
 import { CartService } from '../../../services/cart.service';
 import { WishlistService } from '../../../services/wishlist.service';
-import { WHATSAPP_NUMBER, WHATSAPP_DEFAULT_MESSAGE, SITE_NAME } from '../../../config';
+import { WHATSAPP_NUMBER, WHATSAPP_DEFAULT_MESSAGE, SITE_NAME, LOGO_URL } from '../../../config';
 
 @Component({
   selector: 'app-navbar',
@@ -14,6 +14,7 @@ import { WHATSAPP_NUMBER, WHATSAPP_DEFAULT_MESSAGE, SITE_NAME } from '../../../c
   templateUrl: './navbar.component.html',
 })
 export class NavbarComponent {
+  logo = LOGO_URL; // wordmark (mobile)
   open = signal(false);
   count = computed(() => this.cart.items().reduce((s, i) => s + i.qty, 0));
   wishlistCount = computed(() => (this.wishlist.ids().size));
@@ -21,6 +22,9 @@ export class NavbarComponent {
   items = computed(() => this.cart.items());
   total = computed(() => this.cart.total());
   private platformId = inject(PLATFORM_ID);
+  // Mobile header scroll state
+  compact = signal(false);
+  hidden = signal(false);
   // Categories dropdown data
   categories = signal<{ name: string; count: number }[]>([]);
   showCats = signal(false);
@@ -48,6 +52,27 @@ export class NavbarComponent {
       fetch('/api/categories').then(r => r.ok ? r.json() : []).then((cats) => {
         if (Array.isArray(cats)) this.categories.set(cats);
       }).catch(() => {});
+
+      // Scroll-aware header (mobile): hide on scroll down, compact on scroll
+      let lastY = window.scrollY;
+      let ticking = false;
+      const onScroll = () => {
+        const y = window.scrollY || 0;
+        const dy = y - lastY;
+        lastY = y;
+        this.compact.set(y > 8);
+        // Hide when scrolling down fast and not at top; show when scrolling up
+        if (y > 100 && dy > 0) {
+          this.hidden.set(true);
+        } else if (dy < 0) {
+          this.hidden.set(false);
+        }
+        ticking = false;
+      };
+      const rafScroll = () => {
+        if (!ticking) { ticking = true; requestAnimationFrame(onScroll); }
+      };
+      window.addEventListener('scroll', rafScroll, { passive: true });
     }
     // react to cart drawer open requests
     effect(() => {

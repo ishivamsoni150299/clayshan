@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="400" viewBox="0 0 1600 400" role="img" aria-label="Clayshan wordmark">
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f5e6b5"/>
+      <stop offset="1" stop-color="#d4af37"/>
+    </linearGradient>
+  </defs>
+  <!-- transparent background to blend with site header -->
+  <!-- emblem -->
+  <g transform="translate(140 200)">
+    <circle r="88" fill="#2b1b0e"/>
+    <circle r="76" fill="none" stroke="url(#gold)" stroke-width="10"/>
+    <path d="M 36 -16 C 20 -46 -6 -60 -36 -54 C -68 -46 -88 -16 -88 20 C -88 60 -60 92 -24 94 C 6 96 30 84 44 66" fill="none" stroke="#f6e7bb" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="48" cy="72" r="8" fill="#d4af37"/>
+    <circle cx="60" cy="84" r="4" fill="#f6e7bb"/>
+  </g>
+  <!-- wordmark -->
+  <g transform="translate(260 105)" fill="#2b1b0e">
+    <style>
+      .t{ font-family: 'Playfair Display', Georgia, serif; font-weight: 700; letter-spacing: .5px; }
+      .s{ font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; font-weight: 500; }
+    </style>
+    <text class="t" x="0" y="120" font-size="156">Clayshan</text>
+    <text class="s" x="6" y="178" font-size="34" fill="url(#gold)">Modern Indian Jewellery</text>
+  </g>
+</svg>

@@ -1,4 +1,4 @@
-import {
+﻿﻿import {
   AngularNodeAppEngine,
   createNodeRequestHandler,
   isMainModule,
@@ -13,6 +13,7 @@ import multer from 'multer';
 import Razorpay from 'razorpay';
 import crypto from 'node:crypto';
 import { readFile } from 'node:fs/promises';
+import type { RequestInit } from 'node-fetch';
 
 const browserDistFolder = join(import.meta.dirname, '../browser');
 
@@ -84,6 +85,12 @@ type ProductRow = {
   description: string;
   category: string;
   tags?: string[];
+  inventory?: number | null;
+  featured?: boolean;
+  variants?: any[];
+  supplier?: string | null;
+  supplier_sku?: string | null;
+  supplier_data?: any;
   created_at?: string;
   updated_at?: string;
 };
@@ -97,6 +104,9 @@ type OrderRow = {
   email?: string;
   items: any;
   status?: string;
+  supplier_order_id?: string | null;
+  tracking_number?: string | null;
+  shipping_carrier?: string | null;
 };
 
 async function seedIfEmpty() {
@@ -149,7 +159,7 @@ function getFallbackProducts() {
     price: p.price,
     currency: 'INR',
     images: [p.img, '/assets/placeholder.svg'],
-    description: 'Handcrafted 925 sterling silver with a clean, modern silhouette. Hypoallergenic and rhodium‑plated for lasting shine.',
+    description: 'Handcrafted 925 sterling silver with a clean, modern silhouette. Hypoallergenic and rhodium-plated for lasting shine.',
     category: p.category,
     tags: p.tags,
   }));
@@ -157,42 +167,21 @@ function getFallbackProducts() {
 
 /** API routes **/
 // Admin auth helpers
-const ADMIN_PASSWORD = process.env['ADMIN_PASSWORD'] || '';
 const ADMIN_EMAILS = (process.env['ADMIN_EMAILS'] || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
-const COOKIE_NAME = 'admintoken';
 const SB_TOKEN = 'sb_token';
 const SB_EMAIL = 'sb_email';
-function makeToken(): string {
-  const h = crypto.createHash('sha256');
-  h.update(ADMIN_PASSWORD || '');
-  return h.digest('hex');
-}
 function isAdmin(req: express.Request): boolean {
-  const t = req.cookies?.[COOKIE_NAME];
-  if (ADMIN_PASSWORD && t === makeToken()) return true;
   const e = (req.cookies?.[SB_EMAIL] || '').toLowerCase();
   if (ADMIN_EMAILS.length && e && ADMIN_EMAILS.includes(e)) return true;
   return false;
 }
 function requireAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
-  if (!ADMIN_PASSWORD) { res.status(503).json({ error: 'Admin not configured' }); return; }
+  if (!ADMIN_EMAILS.length) { res.status(503).json({ error: 'Admin not configured' }); return; }
   if (!isAdmin(req)) { res.status(401).json({ error: 'Unauthorized' }); return; }
   return next();
 }
 
-app.post('/api/admin/login', (req, res) => {
-  const { password } = req.body || {};
-  if (!ADMIN_PASSWORD) { res.status(503).json({ error: 'Admin not configured' }); return; }
-  if (password !== ADMIN_PASSWORD) { res.status(401).json({ error: 'Invalid password' }); return; }
-  res.cookie(COOKIE_NAME, makeToken(), { httpOnly: true, sameSite: 'lax', secure: false, maxAge: 7 * 24 * 3600 * 1000 });
-  res.json({ ok: true });
-  return;
-});
-
-app.post('/api/admin/logout', (req, res) => {
-  res.clearCookie(COOKIE_NAME);
-  res.json({ ok: true });
-});
+// Removed password-based admin login/logout; Supabase email-based admin only
 
 app.get('/api/admin/me', (req, res) => {
   res.json({ admin: isAdmin(req) });
@@ -208,8 +197,9 @@ app.post('/api/auth/login', async (req, res) => {
     if (error) { res.status(401).json({ error: error.message }); return; }
     const token = data.session?.access_token;
     if (!token) { res.status(500).json({ error: 'No session token' }); return; }
-    res.cookie(SB_TOKEN, token, { httpOnly: true, sameSite: 'lax', secure: false, maxAge: 7 * 24 * 3600 * 1000 });
-    res.cookie(SB_EMAIL, String(email).toLowerCase(), { httpOnly: true, sameSite: 'lax', secure: false, maxAge: 7 * 24 * 3600 * 1000 });
+    const secure = (process.env['COOKIE_SECURE'] || process.env['NODE_ENV'] === 'production') ? true : false;
+    res.cookie(SB_TOKEN, token, { httpOnly: true, sameSite: 'lax', secure, maxAge: 7 * 24 * 3600 * 1000 });
+    res.cookie(SB_EMAIL, String(email).toLowerCase(), { httpOnly: true, sameSite: 'lax', secure, maxAge: 7 * 24 * 3600 * 1000 });
     res.json({ ok: true, admin: isAdmin(req) });
   } catch (e: any) {
     res.status(500).json({ error: e?.message || 'Auth error' });
@@ -356,6 +346,26 @@ app.post('/api/checkout/verify', async (req, res) => {
       const order: OrderRow = { razorpay_order_id, razorpay_payment_id, amount, currency, email: email || undefined, items: items || [], status: 'paid' };
       const { data, error } = await supabase.from('orders').insert([order]).select('id').maybeSingle();
       if (error) { res.status(500).json({ error: error.message }); return; }
+      // Best-effort inventory decrement for each cart item
+      try {
+        if (Array.isArray(items)) {
+          for (const it of items) {
+            const pid = String(it?.id || '').trim();
+            const qty = Math.max(1, Number(it?.qty || 0));
+            if (!pid || !qty) continue;
+            // Lookup by id, then by slug
+            let sel = await supabase.from('products').select('id,inventory,slug').eq('id', pid).maybeSingle();
+            if (sel.error || !sel.data) {
+              sel = await supabase.from('products').select('id,inventory,slug').eq('slug', pid).maybeSingle();
+            }
+            const row: any = sel.data;
+            if (row && typeof row.inventory === 'number' && row.inventory != null) {
+              const newInv = Math.max(0, (row.inventory as number) - qty);
+              await supabase.from('products').update({ inventory: newInv }).eq('id', row.id);
+            }
+          }
+        }
+      } catch {}
       res.json({ ok: true, id: data?.id || razorpay_order_id });
       return;
     }
@@ -364,13 +374,453 @@ app.post('/api/checkout/verify', async (req, res) => {
     res.status(500).json({ error: e?.message || 'Verification error' });
   }
 });
-app.get('/api/products', async (_req, res, next) => {
+
+/** Dropshipping: Silverbene API integration **/
+const DS_BASE = process.env['SILVERBENE_API_BASE'] || 'https://silverbene.com/api';
+const DS_KEY = process.env['SILVERBENE_API_KEY'] || '';
+const DS_SECRET = process.env['SILVERBENE_API_SECRET'] || '';
+const DS_BEARER = process.env['SILVERBENE_ACCESS_TOKEN'] || process.env['SILVERBENE_BEARER'] || '';
+const DS_WEBHOOK_SECRET = process.env['SILVERBENE_WEBHOOK_SECRET'] || '';
+const USD_INR = Number(process.env['EXCHANGE_RATE_USD_INR'] || '83');
+
+async function dsFetch(path: string, init?: RequestInit): Promise<any> {
+  const url = DS_BASE.replace(/\/$/, '') + path;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (DS_BEARER) {
+    headers['Authorization'] = `Bearer ${DS_BEARER}`;
+  } else {
+    if (DS_KEY) headers['X-API-KEY'] = DS_KEY;
+    if (DS_SECRET) headers['X-API-SECRET'] = DS_SECRET;
+  }
+  const res = await fetch(url, { ...(init || {}), headers: { ...headers, ...(init?.headers as any || {}) } } as any);
+  if (!res.ok) throw new Error(`Dropship API ${res.status}`);
+  const data = await res.json().catch(() => ({}));
+  return data;
+}
+
+function mapDsProduct(p: any): ProductRow {
+  const name = String(p?.name || p?.title || 'Silverbene Product');
+  const sku = String(p?.sku || p?.id || '').trim();
+  const priceUsd = Number(p?.price || p?.price_usd || 0);
+  const priceInr = Math.round((priceUsd || 0) * USD_INR);
+  const imgs: string[] = Array.isArray(p?.images) ? p.images : (p?.image ? [p.image] : []);
+  const slug = (sku ? `silverbene-${sku}` : name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''));
+  return {
+    name,
+    slug,
+    price: priceInr > 0 ? priceInr : 0,
+    currency: 'INR',
+    images: imgs.filter(Boolean),
+    description: String(p?.description || p?.desc || name),
+    category: String(p?.category || 'Dropship'),
+    tags: Array.isArray(p?.tags) ? p.tags : [],
+    inventory: typeof p?.stock === 'number' ? p.stock : null,
+    featured: false,
+    variants: Array.isArray(p?.variants) ? p.variants : [],
+    supplier: 'silverbene',
+    supplier_sku: sku || null,
+    supplier_data: p,
+  };
+}
+
+/** Silverbene documented endpoints (s.silverbene.com) using token query **/
+const SB_DS_BASE = process.env['SILVERBENE_SB_BASE'] || 'https://s.silverbene.com/api/dropshipping';
+let __sbTokenCache: string | null = null;
+function getSupplierToken(): string {
+  if (__sbTokenCache) return __sbTokenCache;
+  const envTok = process.env['SILVERBENE_ACCESS_TOKEN'] || process.env['SILVERBENE_TOKEN'] || process.env['SILVERBENE_BEARER'] || '';
+  if (envTok) { __sbTokenCache = envTok; return __sbTokenCache; }
   try {
-    if (!supabase) {
-      res.json(getFallbackProducts());
+    const fs = require('node:fs');
+    const p = 'silverbene.token';
+    if (fs.existsSync(p)) {
+      const t = String(fs.readFileSync(p, 'utf8')).trim();
+      if (t) { __sbTokenCache = t; return __sbTokenCache; }
+    }
+  } catch {}
+  return '';
+}
+
+// Simple in-memory cache for supplier responses
+const __memCache = new Map<string, { exp: number; data: any }>();
+function cacheGet(key: string): any | undefined {
+  const e = __memCache.get(key);
+  if (e && e.exp > Date.now()) return e.data;
+  if (e) __memCache.delete(key);
+  return undefined;
+}
+function cacheSet(key: string, data: any, ttlMs: number) {
+  __memCache.set(key, { exp: Date.now() + Math.max(0, ttlMs) , data });
+}
+
+async function sbFetch(path: string, query: Record<string, string | number | undefined>, cacheMs?: number): Promise<any> {
+  const q = new URLSearchParams();
+  const token = getSupplierToken() || DS_BEARER;
+  if (!token) throw new Error('Silverbene token not configured');
+  q.set('token', token);
+  for (const [k, v] of Object.entries(query || {})) {
+    if (v === undefined || v === null || v === '') continue;
+    q.set(k, String(v));
+  }
+  const url = `${SB_DS_BASE.replace(/\/$/, '')}${path}?${q.toString()}`;
+  const defaultTtl = Number(process.env['SUPPLIER_CACHE_TTL_MS'] || '300000'); // 5 minutes default
+  const ttl = typeof cacheMs === 'number' ? cacheMs : defaultTtl;
+  if (ttl > 0) {
+    const hit = cacheGet(url);
+    if (hit !== undefined) return hit;
+  }
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Silverbene API ${res.status}`);
+  const data = await res.json().catch(() => ({}));
+  if (typeof data?.code !== 'undefined' && Number(data.code) !== 0) {
+    throw new Error(`Silverbene error: ${data?.message || data?.code}`);
+  }
+  if (ttl > 0) cacheSet(url, data, ttl);
+  return data;
+}
+
+function stripHtml(html: string | undefined): string {
+  if (!html) return '';
+  try { return String(html).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(); } catch { return String(html); }
+}
+
+function mapSbProduct(p: any): ProductRow {
+  const name = String(p?.title || 'Silverbene Product');
+  const sku = String(p?.sku || '').trim();
+  const slug = (sku ? `sb-${sku}` : name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''));
+  const imgs: string[] = Array.isArray(p?.gallery) ? p.gallery : [];
+  const opts: any[] = Array.isArray(p?.option) ? p.option : [];
+  const pricesUsd = opts.map(o => Number(o?.price || 0)).filter(n => n>0);
+  const minUsd = pricesUsd.length ? Math.min(...pricesUsd) : 0;
+  const priceInr = Math.round(minUsd * USD_INR);
+  const inventory = opts.reduce((s, o) => s + (Number(o?.qty || 0) || 0), 0);
+  const variants = opts.map((o) => ({
+    option_id: o?.option_id,
+    attributes: Array.isArray(o?.attribute) ? o.attribute : [],
+    price_usd: Number(o?.price || 0) || 0,
+    price_inr: Math.round((Number(o?.price || 0) || 0) * USD_INR),
+    qty: Number(o?.qty || 0) || 0,
+  }));
+  // Category detection by keyword (basic taxonomy)
+  const blob = `${name} ${stripHtml(p?.desc)}`.toLowerCase();
+  let category = 'Jewellery';
+  if (/earring|earrings|stud|hoop/.test(blob)) category = 'Earrings';
+  else if (/necklace|pendant|choker|chain/.test(blob)) category = 'Necklaces';
+  else if (/ring\b|rings\b/.test(blob)) category = 'Rings';
+  else if (/bracelet|bangle|kada|cuff/.test(blob)) category = 'Bracelets';
+  else if (/anklet|payal/.test(blob)) category = 'Anklets';
+  return {
+    name,
+    slug,
+    price: priceInr,
+    currency: 'INR',
+    images: imgs.filter(Boolean),
+    description: stripHtml(p?.desc) || name,
+    category,
+    tags: [],
+    inventory,
+    featured: false,
+    variants,
+    supplier: 'silverbene',
+    supplier_sku: sku || null,
+    supplier_data: p,
+  };
+}
+
+// Admin: Import via documented product_list endpoint (supports sku list)
+app.post('/api/admin/dropship/sb/import', requireAdmin, async (req, res) => {
+  try {
+    if (!supabase) { res.status(503).json({ error: 'Supabase not configured' }); return; }
+    const { sku } = req.body || {};
+    const q: any = {};
+    if (sku) q.sku = String(sku);
+    const data = await sbFetch('/product_list', q);
+    const list: any[] = data?.data?.data || [];
+    let upserted = 0;
+    for (const raw of list) {
+      const mapped = mapSbProduct(raw);
+      const existing = await supabase.from('products').select('id').eq('supplier', 'silverbene').eq('supplier_sku', mapped.supplier_sku).maybeSingle();
+      if (existing.data && existing.data.id) await supabase.from('products').update(mapped).eq('id', existing.data.id);
+      else await supabase.from('products').insert([mapped]);
+      upserted++;
+    }
+    res.json({ ok: true, upserted });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || 'SB import error' });
+  }
+});
+
+// Admin: Import by date range
+app.post('/api/admin/dropship/sb/import-by-date', requireAdmin, async (req, res) => {
+  try {
+    if (!supabase) { res.status(503).json({ error: 'Supabase not configured' }); return; }
+    const { start_date, end_date, is_really_stock = 1, keywords } = req.body || {};
+    if (!start_date || !end_date) { res.status(400).json({ error: 'Missing start_date/end_date' }); return; }
+    const data = await sbFetch('/product_list_by_date', { start_date, end_date, is_really_stock, keywords });
+    const list: any[] = data?.data?.data || [];
+    let upserted = 0;
+    for (const raw of list) {
+      const mapped = mapSbProduct(raw);
+      const existing = await supabase.from('products').select('id').eq('supplier', 'silverbene').eq('supplier_sku', mapped.supplier_sku).maybeSingle();
+      if (existing.data && existing.data.id) await supabase.from('products').update(mapped).eq('id', existing.data.id);
+      else await supabase.from('products').insert([mapped]);
+      upserted++;
+    }
+    res.json({ ok: true, upserted });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || 'SB import-by-date error' });
+  }
+});
+
+// Admin: refresh stock by option_id list
+app.post('/api/admin/dropship/sb/stock', requireAdmin, async (req, res) => {
+  try {
+    if (!supabase) { res.status(503).json({ error: 'Supabase not configured' }); return; }
+    const { option_ids } = req.body || {};
+    if (!option_ids || (Array.isArray(option_ids) && option_ids.length === 0)) { res.status(400).json({ error: 'Missing option_ids' }); return; }
+    const idsCsv = Array.isArray(option_ids) ? option_ids.join(',') : String(option_ids);
+    const data = await sbFetch('/option_qty', { option_id: idsCsv }, 60000);
+    const arr: any[] = Array.isArray(data?.data) ? data.data : [];
+    // For simplicity, we'll fetch all supplier products and update in memory
+    const { data: products } = await supabase.from('products').select('id, variants, supplier').eq('supplier', 'silverbene');
+    const byId: Record<string, any> = {};
+    for (const row of products || []) byId[row.id] = row;
+    const updates: { id: string; variants: any[]; inventory: number }[] = [];
+    for (const q of arr) {
+      const oid = String(q?.option_id || q?.optionId || '');
+      const qty = Number(q?.qyt || q?.qty || 0) || 0;
+      for (const row of products || []) {
+        const variants: any[] = Array.isArray(row.variants) ? row.variants : [];
+        let changed = false;
+        for (const v of variants) {
+          if (String(v.option_id || '') === oid) { v.qty = qty; changed = true; }
+        }
+        if (changed) {
+          const inv = variants.reduce((s, v) => s + (Number(v.qty || 0) || 0), 0);
+          updates.push({ id: row.id, variants, inventory: inv });
+        }
+      }
+    }
+    for (const u of updates) {
+      await supabase.from('products').update({ variants: u.variants, inventory: u.inventory }).eq('id', u.id);
+    }
+    res.json({ ok: true, updated: updates.length });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || 'SB stock refresh error' });
+  }
+});
+
+// Admin: clear supplier cache
+app.post('/api/admin/dropship/cache/clear', requireAdmin, async (_req, res) => {
+  try {
+    __memCache.clear();
+    res.json({ ok: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || 'Cache clear error' });
+  }
+});
+
+// Admin: delete product by slug (one-off utility)
+app.delete('/api/admin/products/slug/:slug', requireAdmin, async (req, res) => {
+  try {
+    if (!supabase) { res.status(503).json({ error: 'Supabase not configured' }); return; }
+    const slug = String((req.params as any)['slug'] || '').trim();
+    if (!slug) { res.status(400).json({ error: 'Missing slug' }); return; }
+    const { error, count } = await supabase.from('products').delete({ count: 'exact' as any }).eq('slug', slug);
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    res.json({ ok: true, deleted: count || 0 });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || 'Delete error' });
+  }
+});
+
+// Public: get a thumbnail URL for a supplier product (first match by keywords)
+app.get('/api/supplier/thumbnail', async (req, res) => {
+  try {
+    const keywords = String((req.query as any)['keywords'] || '').trim();
+    if (!keywords) { res.status(400).json({ error: 'Missing keywords' }); return; }
+    // Use recent two months window as elsewhere
+    const now = new Date();
+    const end = `${now.getFullYear()}-${now.getMonth()+1}`;
+    const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth()-1, 1);
+    const start = `${twoMonthsAgo.getFullYear()}-${twoMonthsAgo.getMonth()+1}`;
+    const data = await sbFetch('/product_list_by_date', { start_date: start, end_date: end, is_really_stock: 1, keywords }, 300000);
+    const list: any[] = data?.data?.data || [];
+    for (const item of list) {
+      const gal: string[] = Array.isArray(item?.gallery) ? item.gallery : [];
+      const first = gal.find(Boolean);
+      if (first) { res.json({ url: first }); return; }
+    }
+    res.json({ url: null });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || 'Thumbnail error' });
+  }
+});
+
+// Admin: import/sync catalog from Silverbene into our products table
+app.post('/api/admin/dropship/import', requireAdmin, async (req, res) => {
+  try {
+    if (!supabase) { res.status(503).json({ error: 'Supabase not configured' }); return; }
+    // Fetch first page; extend for pagination if needed
+    const page = Number((req.body || {}).page || 1);
+    const pageSize = Number((req.body || {}).limit || 100);
+    const data = await dsFetch(`/products?page=${page}&limit=${pageSize}`);
+    const list: any[] = Array.isArray(data?.products) ? data.products : (Array.isArray(data) ? data : []);
+    let upserted = 0;
+    for (const raw of list) {
+      const mapped = mapDsProduct(raw);
+      // Find existing by supplier sku
+      const existing = await supabase.from('products').select('id').eq('supplier', 'silverbene').eq('supplier_sku', mapped.supplier_sku).maybeSingle();
+      if (existing.data && existing.data.id) {
+        await supabase.from('products').update(mapped).eq('id', existing.data.id);
+      } else {
+        await supabase.from('products').insert([mapped]);
+      }
+      upserted++;
+    }
+    res.json({ ok: true, upserted });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || 'Import error' });
+  }
+});
+
+// Admin: proxy view of supplier products (for quick checks)
+app.get('/api/admin/dropship/products', requireAdmin, async (_req, res) => {
+  try {
+    const data = await dsFetch(`/products?limit=50`);
+    res.json(data);
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || 'Supplier fetch error' });
+  }
+});
+
+// Admin: place dropship order at supplier
+app.post('/api/admin/dropship/order', requireAdmin, async (req, res) => {
+  try {
+    const { items, shipping } = req.body || {};
+    if (!Array.isArray(items) || !items.length) { res.status(400).json({ error: 'Missing items' }); return; }
+    // Build supplier order payload (approximate; adjust to Silverbene spec as needed)
+    const payload = {
+      items: items.map((it: any) => ({ sku: it.sku || it.id || it.slug, quantity: Number(it.qty || 1) })),
+      shipping,
+    };
+    const resp = await dsFetch('/orders', { method: 'POST', body: JSON.stringify(payload) } as any);
+    const supplierOrderId = String(resp?.order_id || resp?.id || resp?.number || '');
+    // Save minimal local order record to track
+    if (supabase) {
+      const amt = Number((req.body || {}).amount || 0);
+      const cur = String((req.body || {}).currency || 'INR');
+      const { data, error } = await supabase.from('orders').insert([{
+        amount: amt, currency: cur, email: String((req.cookies?.['sb_email'] || '')).toLowerCase() || undefined,
+        items, status: 'placed', supplier_order_id: supplierOrderId || null,
+      }]).select('id').maybeSingle();
+      if (error) { res.status(500).json({ error: error.message }); return; }
+      res.json({ ok: true, supplierOrderId, id: data?.id });
       return;
     }
-    const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false });
+    res.json({ ok: true, supplierOrderId });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || 'Dropship order error' });
+  }
+});
+
+// Supplier webhook: tracking/status updates
+app.post('/api/dropship/webhook', express.json(), async (req, res) => {
+  try {
+    // Simple shared-secret validation (replace with signature scheme if provided by supplier)
+    const sig = String(req.headers['x-silverbene-signature'] || '');
+    if (DS_WEBHOOK_SECRET && sig !== DS_WEBHOOK_SECRET) { res.status(401).json({ error: 'Invalid signature' }); return; }
+    const ev = req.body || {};
+    const supplierOrderId = String(ev?.order_id || ev?.id || ev?.number || '');
+    const tracking = String(ev?.tracking_number || '');
+    const carrier = String(ev?.carrier || '');
+    if (!supplierOrderId) { res.status(400).json({ error: 'Missing supplier order id' }); return; }
+    if (supabase) {
+      await supabase.from('orders').update({ tracking_number: tracking || null, shipping_carrier: carrier || null, status: String(ev?.status || 'shipped') }).eq('supplier_order_id', supplierOrderId);
+    }
+    res.json({ ok: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || 'Webhook error' });
+  }
+});
+app.get('/api/products', async (req, res, next) => {
+  try {
+    const q = String((req.query as any)['q'] || '').trim();
+    const category = String((req.query as any)['category'] || '').trim();
+    const min = Number((req.query as any)['min'] || '') || undefined;
+    const max = Number((req.query as any)['max'] || '') || undefined;
+    const featuredOnly = String((req.query as any)['featured'] || '').trim().toLowerCase() === 'true';
+
+    // Supplier-only catalog mode (no DB) when NO_DB_CATALOG=1|true
+    const NO_DB = /^(1|true)$/i.test(String(process.env['NO_DB_CATALOG'] || ''));
+    if (NO_DB) {
+      try {
+        // Strategy: hunt windows up to ~12 months back to ensure we show products.
+        const want = 36; // aim to show at least 36 items
+        const acc: any[] = [];
+        const now = new Date();
+        // Try 6 two-month windows (last year) with real-time stock first
+        for (let back = 0; back < 6 && acc.length < want; back++) {
+          const endDate = new Date(now.getFullYear(), now.getMonth() - (back*2), 1);
+          const startDate = new Date(now.getFullYear(), now.getMonth() - (back*2 + 1), 1);
+          const end = `${endDate.getFullYear()}-${endDate.getMonth()+1}`;
+          const start = `${startDate.getFullYear()}-${startDate.getMonth()+1}`;
+          const data = await sbFetch('/product_list_by_date', { start_date: start, end_date: end, is_really_stock: 1, keywords: q || undefined });
+          const raw: any[] = data?.data?.data || [];
+          for (const r of raw) acc.push(r);
+        }
+        // If still empty, repeat without real-time stock limitation
+        if (acc.length === 0) {
+          for (let back = 0; back < 6 && acc.length < want; back++) {
+            const endDate = new Date(now.getFullYear(), now.getMonth() - (back*2), 1);
+            const startDate = new Date(now.getFullYear(), now.getMonth() - (back*2 + 1), 1);
+            const end = `${endDate.getFullYear()}-${endDate.getMonth()+1}`;
+            const start = `${startDate.getFullYear()}-${startDate.getMonth()+1}`;
+            const data = await sbFetch('/product_list_by_date', { start_date: start, end_date: end, is_really_stock: 0, keywords: q || undefined });
+            const raw: any[] = data?.data?.data || [];
+            for (const r of raw) acc.push(r);
+          }
+        }
+        let list = acc.map(mapSbProduct);
+        // Deduplicate by supplier_sku
+        const seen = new Set<string>();
+        list = list.filter(p => { const k = (p as any).supplier_sku || p.slug; if (seen.has(k)) return false; seen.add(k); return true; });
+        // Apply filters locally
+        if (category) list = list.filter(p => p.category === category);
+        if (typeof min === 'number') list = list.filter(p => p.price >= (min as number));
+        if (typeof max === 'number') list = list.filter(p => p.price <= (max as number));
+        if (q) list = list.filter(p => (p.name + ' ' + p.description).toLowerCase().includes(q.toLowerCase()));
+        if (featuredOnly) list = list.filter((x: any) => x.featured === true);
+        if (list.length === 0) res.setHeader('X-Supplier-Empty', '1');
+        res.json(list);
+        return;
+      } catch (e) {
+        console.warn('Supplier list error:', (e as any)?.message);
+        res.setHeader('X-Supplier-Empty', '1');
+        res.json([]);
+        return;
+      }
+    }
+
+    if (!supabase) {
+      let list = getFallbackProducts();
+      if (category) list = list.filter(p => p.category === category);
+      if (typeof min === 'number') list = list.filter(p => p.price >= min!);
+      if (typeof max === 'number') list = list.filter(p => p.price <= max!);
+      if (q) list = list.filter(p => (p.name + ' ' + p.description + ' ' + (p.tags||[]).join(' ')).toLowerCase().includes(q.toLowerCase()));
+      if (featuredOnly) list = list.filter((x: any) => x.featured === true);
+      res.json(list);
+      return;
+    }
+    let sel = supabase.from('products').select('*');
+    if (category) sel = sel.eq('category', category);
+    if (typeof min === 'number') sel = sel.gte('price', min as any);
+    if (typeof max === 'number') sel = sel.lte('price', max as any);
+    if (featuredOnly) sel = sel.eq('featured', true);
+    if (q) sel = sel.or(`name.ilike.%${q}%,description.ilike.%${q}%,tags.cs.{${q}}` as any);
+    const { data, error } = await sel.order('created_at', { ascending: false });
     if (error) {
       console.warn('Supabase products error:', error.message);
       res.json(getFallbackProducts());
@@ -463,6 +913,23 @@ app.post('/api/admin/rehost-images', requireAdmin, async (_req, res) => {
 
 app.get('/api/products/:slug', async (req, res, next) => {
   try {
+    const NO_DB = /^(1|true)$/i.test(String(process.env['NO_DB_CATALOG'] || ''));
+    if (NO_DB) {
+      try {
+        const slug = String(req.params.slug || '');
+        const sku = slug.startsWith('sb-') ? slug.slice(3) : slug;
+        const data = await sbFetch('/product_list', { sku });
+        const item = ((data?.data?.data || []) as any[])[0];
+        if (!item) { res.status(404).json({ error: 'Not found' }); return; }
+        const mapped = mapSbProduct(item);
+        res.json(mapped);
+        return;
+      } catch (e) {
+        console.warn('Supplier item error:', (e as any)?.message);
+        res.status(404).json({ error: 'Not found' });
+        return;
+      }
+    }
     if (!supabase) {
       const item = getFallbackProducts().find((p) => p.slug === req.params.slug);
       if (!item) {
@@ -503,6 +970,32 @@ app.get('/api/products/:slug', async (req, res, next) => {
 
 app.get('/api/categories', async (_req, res, next) => {
   try {
+    const NO_DB = /^(1|true)$/i.test(String(process.env['NO_DB_CATALOG'] || ''));
+    if (NO_DB) {
+      try {
+        // Build categories from the same rolling windows used in /api/products
+        const want = 60;
+        const acc: any[] = [];
+        const now = new Date();
+        for (let back = 0; back < 6 && acc.length < want; back++) {
+          const endDate = new Date(now.getFullYear(), now.getMonth() - (back*2), 1);
+          const startDate = new Date(now.getFullYear(), now.getMonth() - (back*2 + 1), 1);
+          const end = `${endDate.getFullYear()}-${endDate.getMonth()+1}`;
+          const start = `${startDate.getFullYear()}-${startDate.getMonth()+1}`;
+          const data = await sbFetch('/product_list_by_date', { start_date: start, end_date: end, is_really_stock: 1 });
+          const raw: any[] = data?.data?.data || [];
+          for (const r of raw) acc.push(r);
+        }
+        const mapped = acc.map(mapSbProduct);
+        const byCat = mapped.reduce<Record<string, number>>((acc, p) => { acc[p.category] = (acc[p.category] || 0) + 1; return acc; }, {});
+        const cats = Object.entries(byCat).map(([name, count]) => ({ name, count })).sort((a,b) => b.count - a.count);
+        res.json(cats);
+        return;
+      } catch {
+        res.json([]);
+        return;
+      }
+    }
     if (!supabase) {
       const cats = getFallbackProducts().reduce<Record<string, number>>((acc, p) => {
         acc[p.category] = (acc[p.category] || 0) + 1;

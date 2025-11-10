@@ -1,19 +1,32 @@
-.nav {
+﻿.nav {
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: 80;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
+  transition: transform .22s ease, background-color .2s ease, backdrop-filter .2s ease, box-shadow .2s ease;
+  backdrop-filter: none;
 }
+.nav.compact { background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: saturate(140%) blur(6px); box-shadow: 0 4px 18px rgba(0,0,0,.06); }
+.nav.hidden { transform: translateY(-100%); }
 .container { height: 64px; display: flex; align-items: center; justify-content: space-between; }
+.nav.compact .container { height: 56px; }
 .nav { background: var(--bg); color: var(--text-700); border-bottom: 1px solid var(--border); }
 .brand {
+  display: inline-flex; align-items: center; gap: 8px;
   font-family: var(--heading-font, 'Playfair Display', serif);
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--text-700);
-  text-decoration: none;
+  font-size: 1.5rem; font-weight: 600; color: var(--text-700); text-decoration: none;
 }
+/* Responsive logo sizing so it never looks tiny or too large */
+:root { --logo-h: clamp(26px, 3.6vw, 40px); }
+.brand { gap: 10px; align-items: center; }
+.brand .brand-text { font-family: var(--heading-font, 'Playfair Display', serif); font-weight: 700; font-size: clamp(22px, 2.2vw, 32px); color: var(--text-700); line-height: 1; letter-spacing: .2px; display: inline; }
+.brand .logo { height: var(--logo-h); width: auto; display: block; object-fit: contain; max-width: min(60vw, 420px); }
+/* Desktop: text brand visible, wordmark hidden */
+.brand .logo.glyph { display: none; }
+.brand .logo.wordmark { display: none; }
+.nav.compact .brand .logo { height: clamp(22px, 3.2vw, 34px); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 .links {
   display: flex; gap: 20px;
 }
@@ -50,6 +63,10 @@
 .nav.open .sheet { display: block; }
 
 @media (max-width: 800px) {
+  /* On mobile, show wordmark and hide text; scale for header */
+  .brand .brand-text { display: none; }
+  /* Slightly larger mobile wordmark as requested */
+  .brand .logo.wordmark { display: block; height: clamp(22px, 8.5vw, 28px); }
   .links { display: none; }
   .menu { display: inline-block; }
 }
@@ -82,25 +99,10 @@
 /* use global .btn styles; keep a compact variant for dropdown */
 .btn.primary { background: var(--brand-color); color: #fff; border: 0; padding: 10px 12px; border-radius: 8px; text-decoration: none; display: inline-block; }
 
-/* WhatsApp Floating Action Button */
-.whatsapp-fab {
-  position: fixed;
-  right: 18px;
-  bottom: 18px;
-  width: 56px;
-  height: 56px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  background: #25D366; /* WhatsApp green */
-  color: #fff;
-  box-shadow: 0 10px 24px rgba(0,0,0,.2);
-  z-index: 110;
-}
-.whatsapp-fab:hover { filter: brightness(0.95); }
-@media (min-width: 1000px) { .whatsapp-fab { bottom: 90px; } }
 .cart-sheet { display: none; }
 @media (max-width: 800px) {
+  /* Mobile header sizing + safe-area padding */
+  .container { height: 56px; padding-left: max(14px, env(safe-area-inset-left, 0px)); padding-right: max(14px, env(safe-area-inset-right, 0px)); }
   /* Use cart overlay instead of dropdown on mobile */
   .mini-cart { display: none !important; }
   .cart-sheet { position: fixed; inset: 0; display: grid; place-items: end; background: rgba(0,0,0,.5); z-index: 95; }
@@ -119,6 +121,10 @@
   .cart-sheet .total { display: flex; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 8px; margin-top: 6px; font-weight: 700; }
   .cart-sheet .btn.primary { width: 100%; margin-top: 10px; }
   .cart-sheet .empty { padding: 24px; text-align: center; color: #666; }
+
+  /* Hide top hamburger menu + sheet when bottom nav is present */
+  .menu { display: none !important; }
+  .sheet { display: none !important; }
 }
 
 /* Bottom tab bar (mobile) */
@@ -128,9 +134,11 @@
   background: var(--surface); border-top: 1px solid var(--border);
   padding: 6px 6px max(6px, env(safe-area-inset-bottom));
 }
-.bottom-nav a { flex: 1; display: grid; justify-items: center; padding: 6px 4px; text-decoration: none; color: var(--text-900); position: relative; }
+.bottom-nav a { flex: 1; display: grid; justify-items: center; padding: 6px 4px; text-decoration: none; color: var(--text-900); position: relative; min-width: 0; }
 .bottom-nav a.active { color: var(--brand-600); }
 .bottom-nav .ico { font-size: 18px; line-height: 1; }
-.bottom-nav .lab { font-size: 12px; margin-top: 2px; }
+.bottom-nav .lab { font-size: 11px; margin-top: 2px; }
 .bottom-nav .badge { position: absolute; top: 2px; right: 18%; background: var(--accent-color); color: #000; border-radius: 999px; min-width: 16px; height: 16px; line-height: 16px; text-align: center; font-size: 11px; font-weight: 800; }
+/* Subtle green hint for WhatsApp tab */
+.bottom-nav .wh-tab .ico { color: #25D366; }
 @media (max-width: 800px) { .bottom-nav { display: flex; } }

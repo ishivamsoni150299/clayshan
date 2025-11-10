@@ -1,10 +1,14 @@
-<header class="nav" [class.open]="open()">
+﻿<header class="nav" [class.open]="open()" [class.compact]="compact()" [class.hidden]="hidden()">
   <div class="container">
-    <a class="brand" routerLink="/" (click)="close()">Clayshan</a>
+    <a class="brand" routerLink="/" (click)="close()" aria-label="Clayshan home">
+      <span class="brand-text">Clayshan</span>
+      <img [src]="logo" alt="" class="logo wordmark" aria-hidden="true" />
+      <span class="sr-only">Clayshan</span>
+    </a>
     
     <nav class="links" aria-label="Primary">
       <div class="dropdown" (mouseenter)="showCats.set(true)" (mouseleave)="showCats.set(false)">
-        <a routerLink="/collections" routerLinkActive="active" (click)="close()">Collections ▾</a>
+        <a routerLink="/collections" routerLinkActive="active" (click)="close()">Collections</a>
         <div class="panel" *ngIf="showCats() && categories().length">
           <a *ngFor="let c of categories()" [routerLink]="['/collections']" [queryParams]="{ category: c.name }" (click)="showCats.set(false)">{{ c.name }} ({{ c.count }})</a>
         </div>
@@ -22,9 +26,9 @@
             <div class="meta">
               <div class="name">{{ it.name }}</div>
               <div class="qty">
-                <button (click)="cart.dec(it.id)" aria-label="Decrease">−</button>
+                <button (click)="cart.dec(it.id)" aria-label="Decrease">-</button>
                 <span>{{ it.qty }}</span>
-                <button (click)="cart.inc(it.id)" aria-label="Increase">＋</button>
+                <button (click)="cart.inc(it.id)" aria-label="Increase">+</button>
               </div>
             </div>
             <div class="price">{{ it.price * it.qty | currency: it.currency }}</div>
@@ -71,9 +75,9 @@
           <div class="meta">
             <div class="name">{{ it.name }}</div>
             <div class="qty">
-              <button (click)="cart.dec(it.id)" aria-label="Decrease">−</button>
+              <button (click)="cart.dec(it.id)" aria-label="Decrease">-</button>
               <span>{{ it.qty }}</span>
-              <button (click)="cart.inc(it.id)" aria-label="Increase">＋</button>
+              <button (click)="cart.inc(it.id)" aria-label="Increase">+</button>
             </div>
           </div>
           <div class="price">{{ it.price * it.qty | currency: it.currency }}</div>
@@ -90,30 +94,29 @@
     </div>
   </div>
 </header>
-<!-- Floating WhatsApp button (site-wide) -->
-<a class="whatsapp-fab" [href]="whUrl()" target="_blank" rel="noopener" aria-label="Chat on WhatsApp">
-  <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-    <path fill="#fff" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.472-.148-.671.15-.198.297-.767.966-.94 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.463-2.39-1.477-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.074-.149-.671-1.612-.92-2.206-.242-.58-.487-.501-.671-.51l-.572-.01c-.198 0-.52.074-.792.372-.273.297-1.04 1.016-1.04 2.479s1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.71.306 1.263.489 1.694.626.712.227 1.361.195 1.874.118.571-.085 1.758-.718 2.007-1.412.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 5.428h-.003a8.76 8.76 0 0 1-4.457-1.219l-.319-.189-3.308.868.884-3.229-.207-.331a8.744 8.744 0 0 1-1.343-4.655c.002-4.827 3.94-8.758 8.768-8.756 2.341.001 4.536.913 6.19 2.568a8.68 8.68 0 0 1 2.565 6.194c-.003 4.827-3.941 8.758-8.77 8.758"/>
-  </svg>
-</a>
+<!-- Floating WhatsApp button removed per request -->
 
 <!-- Mobile bottom tab bar -->
 <nav class="bottom-nav" aria-label="Primary mobile">
   <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}">
-    <span class="ico">🏠</span>
+    <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M9 22V12h6v10"/></svg></span>
     <span class="lab">Home</span>
   </a>
   <a routerLink="/collections" routerLinkActive="active">
-    <span class="ico">🛍️</span>
+    <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2l3 7h6l3-7"/><path d="M6 9v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V9z"/></svg></span>
     <span class="lab">Shop</span>
   </a>
   <a routerLink="/wishlist" routerLinkActive="active">
-    <span class="ico">♥︎</span>
+    <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 22l7.8-8.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg></span>
     <span class="lab">Wishlist</span>
   </a>
   <a routerLink="/cart" routerLinkActive="active" class="cart-tab">
-    <span class="ico">🛒</span>
+    <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 12.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></span>
     <span class="lab">Cart</span>
     <span class="badge" *ngIf="count() > 0">{{ count() }}</span>
+  </a>
+  <a [href]="whUrl()" target="_blank" rel="noopener" class="wh-tab">
+    <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/></svg></span>
+    <span class="lab">Chat</span>
   </a>
 </nav>

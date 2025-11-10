@@ -10,6 +10,7 @@ import { CartService } from '../../services/cart.service';
 import { WishlistService } from '../../services/wishlist.service';
 import { Meta, Title } from '@angular/platform-browser';
 import { WHATSAPP_NUMBER, WHATSAPP_DEFAULT_MESSAGE, SITE_NAME } from '../../config';
+import { ORDER_CUTOFF_HOUR_LOCAL, FREE_SHIPPING_THRESHOLD_INR } from '../../config';
 
 @Component({
   selector: 'app-product-detail',
@@ -24,6 +25,8 @@ export class ProductDetailComponent implements OnInit, AfterViewInit, OnDestroy 
   loaded = false; // mark client-side completion
   qty = 1;
   added = false;
+  cutoffText = '';
+  stockText = '';
   // swipe state
   private touchStartX: number | null = null;
   private touchEndX: number | null = null;
@@ -74,6 +77,7 @@ export class ProductDetailComponent implements OnInit, AfterViewInit, OnDestroy 
   private fsStartX = 0; private fsStartY = 0; private fsLastX = 0; private fsLastY = 0; private fsMoveX = 0;
   constructor(private route: ActivatedRoute, private productService: ProductService, private cart: CartService, public wishlist: WishlistService, private cdr: ChangeDetectorRef, private meta: Meta, private title: Title) {}
   jsonLdText = '';
+  breadcrumbJsonLd = '';
   async ngOnInit(): Promise<void> {
     const slug = this.route.snapshot.paramMap.get('slug') || '';
     this.product = await this.productService.getBySlug(slug);
@@ -81,13 +85,15 @@ export class ProductDetailComponent implements OnInit, AfterViewInit, OnDestroy 
       await this.productService.loadProducts();
       this.product = await this.productService.getBySlug(slug);
     }
+    // load reviews for this product (local)
+    this.loadReviews();
     if (this.product) {
       const t = `${this.product.name} • Clayshan Jewellery`;
       this.title.setTitle(t);
       this.meta.updateTag({ name: 'description', content: this.product.description?.slice(0, 160) || 'Modern Indian jewellery' });
       this.meta.updateTag({ property: 'og:title', content: t });
       this.meta.updateTag({ property: 'og:description', content: this.product.description || '' });
-      if (this.product.images?.[0]) this.meta.updateTag({ property: 'og:image', content: this.product.images[0] });
+      if (this.product.images && this.product.images[0]) this.meta.updateTag({ property: 'og:image', content: this.product.images[0] });
       // JSON-LD schema
       const images = (this.product.images || []).filter(Boolean);
       const schema: any = {
@@ -107,6 +113,29 @@ export class ProductDetailComponent implements OnInit, AfterViewInit, OnDestroy 
       };
       try { schema.url = typeof window !== 'undefined' ? window.location.href : undefined; } catch {}
       this.jsonLdText = JSON.stringify(schema);
+      // Low stock cue
+      const inv = (this.product as any).inventory as number | null | undefined;
+      if (typeof inv === 'number' && inv != null) {
+        if (inv <= 0) this.stockText = 'Currently out of stock';
+        else if (inv <= 3) this.stockText = `Only ${inv} left — selling fast!`;
+        else if (inv <= 10) this.stockText = `${inv} in stock`;
+      }
+      // Cutoff: order by HH:MM for same‑day dispatch
+      this.cutoffText = this.computeCutoffText();
+      // Breadcrumbs JSON-LD
+      const bctx: any = {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: '/' },
+          { '@type': 'ListItem', position: 2, name: 'Collections', item: '/collections' },
+          { '@type': 'ListItem', position: 3, name: this.product.name, item: undefined }
+        ]
+      };
+      try { bctx.itemListElement[0].item = (typeof window !== 'undefined') ? window.location.origin + '/' : '/'; } catch {}
+      try { bctx.itemListElement[1].item = (typeof window !== 'undefined') ? window.location.origin + '/collections' : '/collections'; } catch {}
+      try { bctx.itemListElement[2].item = (typeof window !== 'undefined') ? window.location.href : undefined; } catch {}
+      this.breadcrumbJsonLd = JSON.stringify(bctx);
     }
     this.cdr.detectChanges();
     if (isPlatformBrowser(this.platformId)) {
@@ -149,7 +178,7 @@ export class ProductDetailComponent implements OnInit, AfterViewInit, OnDestroy 
   }
   addToCart() {
     if (!this.product) return;
-    this.cart.add({ id: this.product.id || this.product.slug, name: this.product.name, price: this.product.price, currency: this.product.currency, image: this.product.images?.[0] }, this.qty || 1);
+    this.cart.add({ id: this.product.id || this.product.slug, name: this.product.name, price: this.product.price, currency: this.product.currency, image: this.product.images[0] }, this.qty || 1);
     this.added = true;
     if (typeof window !== 'undefined') {
       setTimeout(() => { this.added = false; }, 2500);
@@ -216,6 +245,20 @@ export class ProductDetailComponent implements OnInit, AfterViewInit, OnDestroy 
     this.eta = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   }
 
+  // Highlights (benefits) for PDP
+  get highlights(): string[] {
+    const base = [
+      '925 Sterling Silver, hypoallergenic',
+      'Rhodium-plated: lasting shine',
+      'Handcrafted with care',
+      'Free shipping across India'
+    ];
+    const tags = (this.product?.tags || []).map(t => String(t).toLowerCase());
+    if (tags.includes('kundan')) base.unshift('Modern Kundan-inspired design');
+    if (tags.includes('anklet')) base.unshift('Comfortable daily-wear anklet');
+    return Array.from(new Set(base)).slice(0, 6);
+  }
+
   whatsappProductLink(p: Product): string {
     try {
       if (typeof window !== 'undefined') {
@@ -224,6 +267,21 @@ export class ProductDetailComponent implements OnInit, AfterViewInit, OnDestroy 
       }
     } catch {}
     return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_DEFAULT_MESSAGE)}`;
+  }
+  private computeCutoffText(): string {
+    try {
+      const now = new Date();
+      const cutoff = new Date(now);
+      cutoff.setHours(ORDER_CUTOFF_HOUR_LOCAL, 0, 0, 0);
+      if (now.getTime() >= cutoff.getTime()) {
+        // next business day cutoff (simple +24h)
+        cutoff.setDate(cutoff.getDate() + 1);
+      }
+      const diffMs = cutoff.getTime() - now.getTime();
+      const h = Math.floor(diffMs / 3600000);
+      const m = Math.floor((diffMs % 3600000) / 60000);
+      return `Order in ${h}h ${m}m for same‑day dispatch`;
+    } catch { return ''; }
   }
 
   // Touch swipe handlers (mobile gallery)
@@ -244,5 +302,53 @@ export class ProductDetailComponent implements OnInit, AfterViewInit, OnDestroy 
       const next = (cur + 1) % imgs.length;
       this.selectedImage = imgs[next];
     }
+  }
+
+  // --- Reviews (local, per product) ---
+  reviews: { stars: number; text: string; name: string; date: string }[] = [];
+  newStars = 5;
+  newName = '';
+  newText = '';
+  get avgStars(): number {
+    const r = this.reviews; if (!r.length) return 5;
+    return Math.round((r.reduce((a, b) => a + (b.stars || 0), 0) / r.length) * 10) / 10;
+  }
+  get reviewsKey(): string {
+    const id = (this.product?.id || this.product?.slug || 'unknown');
+    return 'reviews_' + id;
+  }
+  loadReviews() {
+    try {
+      const raw = typeof window !== 'undefined' ? localStorage.getItem(this.reviewsKey) : null;
+      this.reviews = raw ? JSON.parse(raw) : [];
+    } catch { this.reviews = []; }
+  }
+  private saveReviews() {
+    try { if (typeof window !== 'undefined') localStorage.setItem(this.reviewsKey, JSON.stringify(this.reviews)); } catch {}
+  }
+  selectStars(s: number) { this.newStars = s; }
+  addReview(ev?: Event) {
+    if (ev) ev.preventDefault();
+    const text = (this.newText || '').trim();
+    const name = (this.newName || 'Guest').trim();
+    const stars = Math.max(1, Math.min(5, this.newStars || 5));
+    if (!text) return;
+    const date = new Date().toISOString();
+    this.reviews.unshift({ stars, text, name, date });
+    this.saveReviews();
+    this.newText = '';
+    this.newName = '';
+    this.newStars = 5;
+  }
+  shareNative() {
+    try {
+      if (typeof navigator !== 'undefined' && (navigator as any).share && this.product) {
+        (navigator as any).share({
+          title: this.product.name,
+          text: this.product.description || 'Check this out',
+          url: typeof window !== 'undefined' ? window.location.href : undefined,
+        });
+      }
+    } catch {}
   }
 }

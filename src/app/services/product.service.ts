@@ -5,6 +5,8 @@ import type { Product } from '../models/product';
 export class ProductService {
   private _products = signal<Product[] | null>(null);
   status = signal<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  // True when server signals upstream supplier returned no data
+  supplierEmpty = signal<boolean>(false);
   products = computed(() => this._products());
   private platformId = inject(PLATFORM_ID);
   private ts: TransferState | undefined = (() => { try { return inject(TransferState, { optional: true }) as TransferState; } catch { return undefined; } })();
@@ -39,6 +41,7 @@ export class ProductService {
         url = '/api/products';
       }
       const res = await fetch(url as any, { cache: 'no-store' as any, headers: { 'Cache-Control': 'no-cache' } });
+      try { this.supplierEmpty.set((res.headers?.get && res.headers.get('X-Supplier-Empty')) === '1'); } catch {}
       if (!res.ok) throw new Error('Failed to load products');
       const data = (await res.json()) as Product[];
       this._products.set(data);

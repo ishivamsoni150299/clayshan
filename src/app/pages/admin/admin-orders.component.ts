@@ -1,6 +1,5 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule, DatePipe, CurrencyPipe } from '@angular/common';
-import { RouterLink } from '@angular/router';
 import { AdminService } from '../../services/admin.service';
 
 type OrderRow = {
@@ -17,7 +16,7 @@ type OrderRow = {
 @Component({
   selector: 'app-admin-orders',
   standalone: true,
-  imports: [CommonModule, RouterLink, DatePipe, CurrencyPipe],
+  imports: [CommonModule, DatePipe, CurrencyPipe],
   styleUrls: ['./admin-orders.component.scss'],
   templateUrl: './admin-orders.component.html',
 })
@@ -43,4 +42,3 @@ export class AdminOrdersComponent implements OnInit {
     }
   }
 }
-

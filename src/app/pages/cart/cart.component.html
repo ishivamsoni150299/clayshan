@@ -1,6 +1,11 @@
 <section class="container cart">
   <h1>Your Cart</h1>
   <div *ngIf="cart.items().length === 0">Your cart is empty.</div>
+  <div class="free-banner" *ngIf="cart.items().length">
+    <div class="msg" *ngIf="freeLeft() > 0">You're {{ freeLeft() | currency:(cart.items()[0]?.currency || 'INR') }} away from free shipping</div>
+    <div class="msg ok" *ngIf="freeLeft() === 0">🎉 You unlocked free shipping!</div>
+    <div class="bar"><div class="fill" [style.width.%]="freePct()"></div></div>
+  </div>
   <div class="list" *ngIf="cart.items().length">
     <div class="row" *ngFor="let it of cart.items()">
       <img *ngIf="it.image" [src]="it.image" alt="{{it.name}}" />

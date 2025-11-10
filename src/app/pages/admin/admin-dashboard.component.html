@@ -27,7 +27,7 @@
 
   <div class="modal" *ngIf="editing">
     <div class="modal-inner">
-      <h2>{{ editing?.id ? 'Edit' : 'Add' }} Product</h2>
+      <h2>{{ editing && editing.id ? 'Edit' : 'Add' }} Product</h2>
       <form (ngSubmit)="save()" class="form">
         <label>Name <input [(ngModel)]="editing!.name" name="name" required /></label>
         <label>Slug <input [(ngModel)]="editing!.slug" name="slug" required /></label>

@@ -2,6 +2,7 @@ import { Component, computed } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { CartService } from '../../services/cart.service';
+import { FREE_SHIPPING_THRESHOLD_INR } from '../../config';
 
 @Component({
   selector: 'app-cart',
@@ -13,6 +14,12 @@ import { CartService } from '../../services/cart.service';
 export class CartComponent {
   constructor(public cart: CartService, private router: Router) {}
   total = computed(() => this.cart.total());
+  threshold = FREE_SHIPPING_THRESHOLD_INR;
+  freeLeft = computed(() => Math.max(0, this.threshold - this.total()));
+  freePct = computed(() => {
+    const t = this.threshold; const sum = this.total();
+    return Math.max(0, Math.min(100, Math.round((sum / t) * 100)));
+  });
   noop() {}
 
   async checkout() {
