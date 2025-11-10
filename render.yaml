@@ -36,3 +36,5 @@ services:
         value: 83
       - key: SUPPLIER_CACHE_TTL_MS
         value: 300000
+      - key: PRICE_MARKUP
+        value: 15

@@ -382,6 +382,7 @@ const DS_SECRET = process.env['SILVERBENE_API_SECRET'] || '';
 const DS_BEARER = process.env['SILVERBENE_ACCESS_TOKEN'] || process.env['SILVERBENE_BEARER'] || '';
 const DS_WEBHOOK_SECRET = process.env['SILVERBENE_WEBHOOK_SECRET'] || '';
 const USD_INR = Number(process.env['EXCHANGE_RATE_USD_INR'] || '83');
+const PRICE_MARKUP = Number(process.env['PRICE_MARKUP'] || '0'); // percentage, e.g. 15 => +15%
 
 async function dsFetch(path: string, init?: RequestInit): Promise<any> {
   const url = DS_BASE.replace(/\/$/, '') + path;
@@ -494,13 +495,14 @@ function mapSbProduct(p: any): ProductRow {
   const opts: any[] = Array.isArray(p?.option) ? p.option : [];
   const pricesUsd = opts.map(o => Number(o?.price || 0)).filter(n => n>0);
   const minUsd = pricesUsd.length ? Math.min(...pricesUsd) : 0;
-  const priceInr = Math.round(minUsd * USD_INR);
+  const baseInr = minUsd * USD_INR;
+  const priceInr = Math.round(baseInr * (1 + (isFinite(PRICE_MARKUP) ? PRICE_MARKUP : 0) / 100));
   const inventory = opts.reduce((s, o) => s + (Number(o?.qty || 0) || 0), 0);
   const variants = opts.map((o) => ({
     option_id: o?.option_id,
     attributes: Array.isArray(o?.attribute) ? o.attribute : [],
     price_usd: Number(o?.price || 0) || 0,
-    price_inr: Math.round((Number(o?.price || 0) || 0) * USD_INR),
+    price_inr: Math.round(((Number(o?.price || 0) || 0) * USD_INR) * (1 + (isFinite(PRICE_MARKUP) ? PRICE_MARKUP : 0) / 100)),
     qty: Number(o?.qty || 0) || 0,
   }));
   // Category detection by keyword (basic taxonomy)
