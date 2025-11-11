@@ -16,16 +16,17 @@
   .card { opacity: 0; transform: translateY(8px); }
   .card.in-view { opacity: 1; transform: none; }
 }
-.image-wrap { position: relative; width: 100%; aspect-ratio: 1/1; background: var(--surface-soft); display: block; overflow: hidden; }
+.image-wrap { position: relative; width: 100%; aspect-ratio: 1/1; background: var(--surface); display: block; overflow: hidden; }
 .image-wrap .badge { position: absolute; left: 8px; top: 8px; background: var(--accent-color); color: var(--brand-900); font-weight: 800; font-size: 11px; letter-spacing: .2px; padding: 4px 8px; border-radius: 999px; box-shadow: 0 6px 16px rgba(0,0,0,.18); opacity: .98; border: 1px solid rgba(0,0,0,.05); }
 /* Base and overlay layers */
 .image-wrap .layer { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.image-wrap .layer img { width: 100%; height: 100%; object-fit: cover; display: block; transform: scale(1.02); transition: transform .35s ease, opacity .35s ease; opacity: 0; will-change: transform, opacity; }
+.image-wrap .layer img { width: 100%; height: 100%; object-fit: contain; background: #fff; display: block; transition: opacity .35s ease; opacity: 0; will-change: opacity; }
 .image-wrap .layer .base { opacity: 0; }
-.image-wrap .base img.base.loaded { opacity: 1; transform: scale(1); }
-.image-wrap .overlay { object-fit: cover; opacity: 0; transition: opacity .3s ease; }
+.image-wrap .base img.base.loaded { opacity: 1; }
+.image-wrap .overlay { object-fit: contain; background: #fff; opacity: 0; transition: opacity .3s ease; }
 .image-wrap .overlay.show { opacity: 1; }
-  .card:hover .image-wrap img { transform: scale(1.06); }
+  /* Avoid cropping on supplier images; skip aggressive hover zoom */
+  /* .card:hover .image-wrap img { transform: scale(1.02); } */
 .quick { position: absolute; right: 8px; bottom: 8px; background: var(--accent-color); border: 0; color: var(--brand-900); font-weight: 700; padding: 8px 10px; border-radius: 999px; opacity: 0; transform: translateY(6px); transition: all .2s ease; }
 .card:hover .quick { opacity: 1; transform: translateY(0); }
 .info { padding: 12px; }
