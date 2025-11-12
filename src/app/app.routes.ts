@@ -1,9 +1,14 @@
 import { Routes } from '@angular/router';
+import { authGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
   {
     path: '',
     loadComponent: () => import('./pages/home/home.component').then(m => m.HomeComponent),
+  },
+  {
+    path: 'categories',
+    loadComponent: () => import('./pages/categories/categories.component').then(m => m.CategoriesComponent),
   },
   {
     path: 'wishlist',
@@ -29,25 +34,34 @@ export const routes: Routes = [
     path: 'cart',
     loadComponent: () => import('./pages/cart/cart.component').then(m => m.CartComponent),
   },
+  
   {
-    path: 'order/success/:id',
-    loadComponent: () => import('./pages/order-success/order-success.component').then(m => m.OrderSuccessComponent),
+    path: 'logout',
+    loadComponent: () => import('./pages/logout/logout.component').then(m => m.LogoutComponent),
+  },
+  {
+    path: 'checkout',
+    loadComponent: () => import('./pages/checkout/checkout.component').then(m => m.CheckoutComponent),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'my/orders',
+    loadComponent: () => import('./pages/my-orders/my-orders.component').then(m => m.MyOrdersComponent),
+    canActivate: [authGuard],
   },
   {
     path: 'track',
     loadComponent: () => import('./pages/track-order/track-order.component').then(m => m.TrackOrderComponent),
   },
   {
-    path: 'admin/login',
-    loadComponent: () => import('./pages/admin/admin-login.component').then(m => m.AdminLoginComponent),
+    path: 'login',
+    loadComponent: () => import('./pages/login/login.component').then(m => m.LoginComponent),
   },
   {
-    path: 'admin',
-    loadComponent: () => import('./pages/admin/admin-dashboard.component').then(m => m.AdminDashboardComponent),
-  },
-  {
-    path: 'admin/orders',
-    loadComponent: () => import('./pages/admin/admin-orders.component').then(m => m.AdminOrdersComponent),
+    path: 'signup',
+    loadComponent: () => import('./pages/signup/signup.component').then(m => m.SignupComponent),
   },
   { path: '**', redirectTo: '' },
 ];
+
+

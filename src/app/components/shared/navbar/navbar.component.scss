@@ -1,4 +1,4 @@
-﻿.nav {
+.nav {
   position: sticky;
   top: 0;
   z-index: 80;
@@ -22,7 +22,7 @@
 .brand { gap: 10px; align-items: center; }
 .brand .brand-text { font-family: var(--heading-font, 'Playfair Display', serif); font-weight: 700; font-size: clamp(22px, 2.2vw, 32px); color: var(--text-700); line-height: 1; letter-spacing: .2px; display: inline; }
 .brand .logo { height: var(--logo-h); width: auto; display: block; object-fit: contain; max-width: min(60vw, 420px); }
-/* Desktop: text brand visible, wordmark hidden */
+/* Desktop: text-only; hide wordmark */
 .brand .logo.glyph { display: none; }
 .brand .logo.wordmark { display: none; }
 .nav.compact .brand .logo { height: clamp(22px, 3.2vw, 34px); }
@@ -63,12 +63,15 @@
 .nav.open .sheet { display: block; }
 
 @media (max-width: 800px) {
-  /* On mobile, show wordmark and hide text; scale for header */
+  /* Mobile: show wordmark slightly larger; hide text */
   .brand .brand-text { display: none; }
-  /* Slightly larger mobile wordmark as requested */
-  .brand .logo.wordmark { display: block; height: clamp(22px, 8.5vw, 28px); }
+  .brand .logo.wordmark { display: block; height: clamp(26px, 9.5vw, 34px); }
   .links { display: none; }
   .menu { display: inline-block; }
+  /* Hide menu entries that are duplicated in bottom nav */
+  .sheet-inner a[href="/collections"],
+  .sheet-inner a[href="/wishlist"],
+  .sheet-inner a.cart-link { display: none; }
 }
 .cart-link { position: relative; } .cart-link .count { display: inline-block; min-width: 18px; padding: 0 6px; line-height: 18px; text-align: center; background: var(--accent-color); color: var(--brand-900); border-radius: 999px; font-size: 12px; margin-left: 6px; font-weight: 700; }
 
@@ -122,23 +125,23 @@
   .cart-sheet .btn.primary { width: 100%; margin-top: 10px; }
   .cart-sheet .empty { padding: 24px; text-align: center; color: #666; }
 
-  /* Hide top hamburger menu + sheet when bottom nav is present */
-  .menu { display: none !important; }
-  .sheet { display: none !important; }
+  /* Keep hamburger menu available on mobile so users can access Sign in from the header sheet */
+  /* Bottom tab bar remains visible; both can coexist for quick access. */
 }
 
 /* Bottom tab bar (mobile) */
 .bottom-nav {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 90;
-  display: none; gap: 6px; justify-content: space-around; align-items: center;
+  display: none; gap: 8px; justify-content: space-around; align-items: center;
   background: var(--surface); border-top: 1px solid var(--border);
-  padding: 6px 6px max(6px, env(safe-area-inset-bottom));
+  padding: 8px 8px max(10px, env(safe-area-inset-bottom));
+  height: 56px;
 }
-.bottom-nav a { flex: 1; display: grid; justify-items: center; padding: 6px 4px; text-decoration: none; color: var(--text-900); position: relative; min-width: 0; }
+.bottom-nav a { flex: 1; display: grid; justify-items: center; padding: 6px 6px; text-decoration: none; color: var(--text-900); position: relative; min-width: 0; }
 .bottom-nav a.active { color: var(--brand-600); }
-.bottom-nav .ico { font-size: 18px; line-height: 1; }
-.bottom-nav .lab { font-size: 11px; margin-top: 2px; }
-.bottom-nav .badge { position: absolute; top: 2px; right: 18%; background: var(--accent-color); color: #000; border-radius: 999px; min-width: 16px; height: 16px; line-height: 16px; text-align: center; font-size: 11px; font-weight: 800; }
+.bottom-nav .ico { font-size: 22px; line-height: 1; }
+.bottom-nav .lab { font-size: 12px; margin-top: 2px; }
+.bottom-nav .badge { position: absolute; top: 0; right: 22%; background: var(--accent-color); color: #000; border-radius: 999px; min-width: 16px; height: 16px; line-height: 16px; text-align: center; font-size: 11px; font-weight: 800; }
 /* Subtle green hint for WhatsApp tab */
 .bottom-nav .wh-tab .ico { color: #25D366; }
 @media (max-width: 800px) { .bottom-nav { display: flex; } }

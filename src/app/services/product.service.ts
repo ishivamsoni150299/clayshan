@@ -7,13 +7,16 @@ export class ProductService {
   status = signal<'idle' | 'loading' | 'ready' | 'error'>('idle');
   // True when server signals upstream supplier returned no data
   supplierEmpty = signal<boolean>(false);
+  // Reviews summary cache: slug -> { avg, count }
+  reviewsSummary = signal<Record<string, { avg: number; count: number }>>({});
   products = computed(() => this._products());
   private platformId = inject(PLATFORM_ID);
   private ts: TransferState | undefined = (() => { try { return inject(TransferState, { optional: true }) as TransferState; } catch { return undefined; } })();
   private PRODUCTS_KEY = makeStateKey<Product[]>('TS_PRODUCTS_ALL');
 
-  async loadProducts(): Promise<void> {
-    if (Array.isArray(this._products()) && (this._products() as Product[]).length > 0) return;
+  async loadProducts(opts?: { q?: string; category?: string | null; min?: number | null; max?: number | null; sort?: string | null; page?: number | null; per?: number | null; featured?: boolean | null }): Promise<void> {
+    // Only skip fetch if no filters provided and we already have data
+    if (!opts && Array.isArray(this._products()) && (this._products() as Product[]).length > 0) return;
     // First, try TransferState on the client
     if (typeof window !== 'undefined' && this.ts?.hasKey(this.PRODUCTS_KEY)) {
       const fromState = this.ts.get(this.PRODUCTS_KEY, [] as any);
@@ -39,6 +42,20 @@ export class ProductService {
         url = `http://localhost:${port}/api/products`;
       } else {
         url = '/api/products';
+      }
+      // Append query params if provided
+      if (opts) {
+        const sp = new URLSearchParams();
+        if (opts.q) sp.set('q', String(opts.q));
+        if (opts.category) sp.set('category', String(opts.category));
+        if (opts.min != null) sp.set('min', String(opts.min));
+        if (opts.max != null) sp.set('max', String(opts.max));
+        if (opts.sort) sp.set('sort', String(opts.sort));
+        if (opts.page != null) sp.set('page', String(opts.page));
+        if (opts.per != null) sp.set('per', String(opts.per));
+        if (opts.featured) sp.set('featured', '1');
+        const qs = sp.toString();
+        if (qs) url += `?${qs}`;
       }
       const res = await fetch(url as any, { cache: 'no-store' as any, headers: { 'Cache-Control': 'no-cache' } });
       try { this.supplierEmpty.set((res.headers?.get && res.headers.get('X-Supplier-Empty')) === '1'); } catch {}
@@ -112,5 +129,32 @@ export class ProductService {
       await this.loadProducts();
     }
     return this._products()?.find((p) => p.slug === slug);
+  }
+
+  // Load real reviews summary for a list of slugs
+  async loadReviewSummary(slugs: string[]): Promise<void> {
+    try {
+      const unique = Array.from(new Set(slugs.filter(Boolean)));
+      if (!unique.length) return;
+      const req: any = (() => { try { return inject(REQUEST as any, { optional: true }); } catch { return undefined; } })();
+      let url: string;
+      const envBase: string | undefined = (globalThis as any)?.process?.env?.API_BASE_URL;
+      if (envBase) url = `${envBase}/api/reviews/summary?slugs=${encodeURIComponent(unique.join(','))}`;
+      else if (req) {
+        const origin = `${(req.headers['x-forwarded-proto'] as string) || 'http'}://${(req.headers['x-forwarded-host'] as string) || req.headers.host}`;
+        url = `${origin}/api/reviews/summary?slugs=${encodeURIComponent(unique.join(','))}`;
+      } else if (typeof window === 'undefined') {
+        const port = (globalThis as any)?.process?.env?.PORT || 4000;
+        url = `http://localhost:${port}/api/reviews/summary?slugs=${encodeURIComponent(unique.join(','))}`;
+      } else {
+        url = `/api/reviews/summary?slugs=${encodeURIComponent(unique.join(','))}`;
+      }
+      const res = await fetch(url as any, { cache: 'no-store' as any });
+      if (!res.ok) return;
+      const data = await res.json();
+      const cur = { ...(this.reviewsSummary()) };
+      for (const [k, v] of Object.entries(data || {})) cur[k] = v as any;
+      this.reviewsSummary.set(cur);
+    } catch {}
   }
 }

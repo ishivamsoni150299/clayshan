@@ -1,26 +1,16 @@
-﻿<a class="card" appInView [routerLink]="['/product', product.slug]" (mouseenter)="onCardEnter()" (mouseleave)="onCardLeave()">
-  <div class="image-wrap" (mouseenter)="onCardEnter()" (mouseleave)="onCardLeave()">
+<a class="card" appInView [routerLink]="['/product', product.slug]" (mouseenter)="onCardEnter()" (mouseleave)="onCardLeave()">
+  <div class="image-wrap" (mouseenter)="onCardEnter()" (mouseleave)="onCardLeave()" (touchstart)="onTouchStart($event)" (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd()">
     <span class="badge" *ngIf="featured">Featured</span>
-    <!-- Base layer -->
-    <picture class="layer base">
-      <source *ngIf="webpCandidate(imageUrl())" [attr.srcset]="webpCandidate(imageUrl())" type="image/webp" />
-      <img
-        class="base"
-        [src]="imageUrl()"
-        [alt]="product.name"
-        (error)="onImgError($event)"
-        (load)="onImgLoad()"
-        [class.loaded]="imgLoaded()"
-        loading="lazy"
-        width="600"
-        height="600"
-        decoding="async"
-        sizes="(max-width: 700px) 50vw, (max-width: 480px) 100vw, 25vw"
-      />
-    </picture>
-    <!-- Overlay layer for crossfade -->
-    <img class="layer overlay" [class.show]="overlayVisible()"
-         [src]="images()[hoverIndex] || 'assets/placeholder.svg'" [alt]="product.name" />
+    <div class="track" [class.noanim]="noAnim()" [style.transform]="'translateX(-' + (slideIndex()*100) + '%)'"><!-- slide -->
+      <img *ngFor="let img of images(); let i = index"
+           [src]="img || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII='"
+           [alt]="product.name + ' ' + (i+1)"
+           (error)="onImgError($event)"
+           decoding="async" loading="lazy" width="800" height="800"/>
+      <!-- cloned first frame for seamless loop -->
+      <img *ngIf="images().length>1" [src]="images()[0]" [alt]="product.name + ' clone'" decoding="async" loading="lazy" width="800" height="800" />
+      <img *ngIf="images().length===0" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII='" alt="placeholder" />
+    </div>
     <button class="quick" (click)="openQV($event)">Quick view</button>
   </div>
   <div class="info">
@@ -46,7 +36,7 @@
       <div class="qv-image" (touchstart)="qvTouchStart($event)" (touchmove)="qvTouchMove($event)" (touchend)="qvTouchEnd()">
         <button class="nav prev" *ngIf="images().length>1" (click)="prevQV()" aria-label="Previous">&lsaquo;</button>
         <button class="nav next" *ngIf="images().length>1" (click)="nextQV()" aria-label="Next">&rsaquo;</button>
-        <img [src]="images()[qvIndex()] || product.images[0] || 'assets/placeholder.svg'" [alt]="product.name" (error)="onImgError($event)" width="600" height="600" />
+        <img [src]="images()[qvIndex()] || product.images[0] || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII='" [alt]="product.name" (error)="onImgError($event)" width="600" height="600" />
         <div class="dots" *ngIf="images().length>1">
           <button *ngFor="let img of images(); let i = index" [class.active]="i===qvIndex()" (click)="selectQV(i)" aria-label="Go to image {{i+1}}"></button>
         </div>

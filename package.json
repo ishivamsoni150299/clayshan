@@ -10,6 +10,8 @@
                     "build:ssr":  "ng build",
                     "serve:ssr":  "node dist/clayshan/server/server.mjs",
                     "prod":  "npm run build:ssr \u0026\u0026 npm run serve:ssr",
+                    "dev:ssr": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-ssr.ps1",
+                    "dev:ssr:unix": "bash scripts/run-ssr.sh",
                     "supabase:init":  "supabase init",
                     "supabase:link":  "supabase link --project-ref %SUPABASE_PROJECT_REF%",
                     "supabase:db:gen":  "supabase db generate --name init-clayshan",

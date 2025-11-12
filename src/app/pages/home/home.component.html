@@ -8,7 +8,7 @@
       </div>
     </div>
     <div class="hero-image" aria-hidden="true">
-      <img src="/assets/products/kundan-necklace-1.svg" alt="Kundan statement necklace" width="800" height="1000" decoding="async" fetchpriority="high" />
+      <img *ngIf="heroImage() as heroImg" [src]="heroImg" alt="Featured piece" width="800" height="1000" decoding="async" fetchpriority="high" />
     </div>
   </div>
   <div class="ornament" aria-hidden="true"></div>
@@ -57,6 +57,7 @@
   </div>
 </section>
 
+<!-- Trust bar under hero -->
 <!-- Recently Viewed (mobile-first; shows after the user visits any PDP) -->
 <section class="section recent" *ngIf="recent().length">
   <div class="container">
@@ -74,27 +75,27 @@
   <div class="container">
     <div class="section-head">
       <h2>Shop by Category</h2>
-      <a routerLink="/collections" class="link">Browse all</a>
+      <a routerLink="/categories" class="link">Browse all</a>
     </div>
     <div class="cat-grid snap">
       <a routerLink="/collections" class="cat" appInView aria-label="Necklaces">
-        <img [src]="catThumbs()['Necklaces'] || '/assets/products/kundan-necklace-1.svg'" alt="Necklaces" loading="lazy" decoding="async" width="600" height="450" sizes="(max-width: 900px) 80vw, 25vw" />
+        <img *ngIf="catThumbs()['Necklaces'] as t" [src]="t" alt="Necklaces" loading="lazy" decoding="async" width="600" height="450" sizes="(max-width: 900px) 80vw, 25vw" />
         <span>Necklaces</span>
       </a>
       <a routerLink="/collections" class="cat" appInView aria-label="Earrings">
-        <img [src]="catThumbs()['Earrings'] || '/assets/products/pearl-earrings-1.svg'" alt="Earrings" loading="lazy" decoding="async" width="600" height="450" sizes="(max-width: 900px) 80vw, 25vw" />
+        <img *ngIf="catThumbs()['Earrings'] as t" [src]="t" alt="Earrings" loading="lazy" decoding="async" width="600" height="450" sizes="(max-width: 900px) 80vw, 25vw" />
         <span>Earrings</span>
       </a>
       <a routerLink="/collections" class="cat" appInView aria-label="Bracelets">
-        <img [src]="catThumbs()['Bracelets'] || '/assets/products/coin-bracelet-1.svg'" alt="Bracelets" loading="lazy" decoding="async" width="600" height="450" sizes="(max-width: 900px) 80vw, 25vw" />
+        <img *ngIf="catThumbs()['Bracelets'] as t" [src]="t" alt="Bracelets" loading="lazy" decoding="async" width="600" height="450" sizes="(max-width: 900px) 80vw, 25vw" />
         <span>Bracelets</span>
       </a>
       <a routerLink="/collections" class="cat" appInView aria-label="Rings">
-        <img [src]="catThumbs()['Rings'] || '/assets/products/stack-ring-1.svg'" alt="Rings" loading="lazy" decoding="async" width="600" height="450" sizes="(max-width: 900px) 80vw, 25vw" />
+        <img *ngIf="catThumbs()['Rings'] as t" [src]="t" alt="Rings" loading="lazy" decoding="async" width="600" height="450" sizes="(max-width: 900px) 80vw, 25vw" />
         <span>Rings</span>
       </a>
       <a [routerLink]="['/collections']" [queryParams]="{ category: 'Anklets' }" class="cat" appInView aria-label="Anklets">
-        <img [src]="catThumbs()['Anklets'] || '/assets/placeholder.svg'" alt="Anklets" loading="lazy" decoding="async" width="600" height="450" sizes="(max-width: 900px) 80vw, 25vw" />
+        <img *ngIf="catThumbs()['Anklets'] as t" [src]="t" alt="Anklets" loading="lazy" decoding="async" width="600" height="450" sizes="(max-width: 900px) 80vw, 25vw" />
         <span>Anklets</span>
       </a>
     </div>
@@ -120,8 +121,7 @@
 <section class="story">
   <div class="container">
     <div class="collage">
-      <img src="/assets/products/kundan-necklace-1.svg" alt="Kundan necklace" />
-      <img src="/assets/products/pearl-earrings-1.svg" alt="Pearl earrings" />
+      <img *ngFor="let img of editorialImages()" [src]="img" alt="Editorial" />
     </div>
     <div class="copy">
       <div class="eyebrow">Jewellery for women who are</div>
@@ -169,3 +169,6 @@
     <div class="msg err" *ngIf="status()==='error'">Please try again in a moment.</div>
   </div>
 </section>
+
+
+

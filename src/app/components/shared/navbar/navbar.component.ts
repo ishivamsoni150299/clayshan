@@ -33,7 +33,7 @@ export class NavbarComponent {
   toggleCart(ev?: Event) { if (ev) { ev.preventDefault(); ev.stopPropagation(); } this.cartOpen.update(v => !v); }
   closeCart() { this.cartOpen.set(false); }
   remove(id: string) { this.cart.remove(id); }
-  imgError(ev: Event) { const el = ev.target as HTMLImageElement; if (el) el.src = 'assets/placeholder.svg'; }
+  imgError(ev: Event) { const el = ev.target as HTMLImageElement; if (el) el.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII='; }
   whUrl(): string {
     try {
       if (typeof window !== 'undefined') {
@@ -83,3 +83,4 @@ export class NavbarComponent {
     });
   }
 }
+

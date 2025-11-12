@@ -1,4 +1,4 @@
-﻿import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { ProductService } from '../../services/product.service';
@@ -67,15 +67,9 @@ export class HomeComponent implements OnInit {
     // Fetch dynamic category thumb(s) on client only
     try {
       if (typeof window !== 'undefined') {
-        const reqs = [
-          ['Earrings','earring'],
-          ['Necklaces','necklace'],
-          ['Rings','ring'],
-          ['Bracelets','bracelet'],
-          ['Anklets','anklet']
-        ] as const;
-        for (const [cat, kw] of reqs) {
-          fetch('/api/supplier/thumbnail?keywords=' + encodeURIComponent(kw))
+        const cats = ['Earrings','Necklaces','Rings','Bracelets','Anklets'] as const;
+        for (const cat of cats) {
+          fetch('/api/supplier/thumbnail?category=' + encodeURIComponent(cat))
             .then(r => r.ok ? r.json() : { url: null } as any)
             .then((j: any) => { if (j && j.url) this.catThumbs.update(m => ({ ...m, [cat]: j.url })); })
             .catch(() => {});
@@ -90,7 +84,11 @@ export class HomeComponent implements OnInit {
     this.meta.updateTag({ property: 'og:title', content: 'Clayshan  Modern Indian Jewellery' });
     this.meta.updateTag({ property: 'og:description', content: 'Handcrafted elegance in modern Indian jewellery  shop necklaces, earrings, bracelets, rings, and anklets.' });
     this.meta.updateTag({ property: 'og:type', content: 'website' });
-    this.meta.updateTag({ property: 'og:image', content: '/assets/brand/clayshan-og-1200x630.svg' });
+    // Prefer a real product image for social preview if available later
+    setTimeout(() => {
+      const hero = this.catThumbs()['Necklaces'];
+      if (hero) this.meta.updateTag({ property: 'og:image', content: hero });
+    }, 1000);
     this.meta.updateTag({ name: 'twitter:card', content: 'summary_large_image' });
     this.meta.updateTag({ name: 'twitter:title', content: 'Clayshan  Modern Indian Jewellery' });
     this.meta.updateTag({ name: 'twitter:description', content: 'Handcrafted elegance in modern Indian jewellery  shop necklaces, earrings, bracelets, rings, and anklets.' });
@@ -131,6 +129,44 @@ export class HomeComponent implements OnInit {
       if (p) map.set(c, p);
     }
     return Array.from(map.entries());
+  });
+
+  // Pick a hero image: prefer category thumbnails in order, else first product image
+  heroImage = computed(() => {
+    const thumbs = this.catThumbs();
+    const prefs = ['Necklaces','Earrings','Rings','Bracelets','Anklets'];
+    for (const c of prefs) {
+      const u = (thumbs as any)[c];
+      if (u) return u as string;
+    }
+    const products = this.productService.products() || [];
+    for (const p of products as any[]) {
+      const u = (p.images || []).find(Boolean);
+      if (u) return u as string;
+    }
+    return '';
+  });
+
+  // Editorial collage: take up to 3 distinct images from category thumbs, then fill from products
+  editorialImages = computed(() => {
+    const out: string[] = [];
+    const seen = new Set<string>();
+    const thumbs = this.catThumbs();
+    for (const c of this.categories) {
+      const u = (thumbs as any)[c];
+      if (u && !seen.has(u)) { out.push(u); seen.add(u); }
+      if (out.length >= 3) break;
+    }
+    if (out.length < 3) {
+      const products = this.productService.products() || [];
+      for (const p of products as any[]) {
+        for (const u of (p.images || [])) {
+          if (u && !seen.has(u)) { out.push(u); seen.add(u); break; }
+        }
+        if (out.length >= 3) break;
+      }
+    }
+    return out.slice(0, 3);
   });
 }
 

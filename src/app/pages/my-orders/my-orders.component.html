@@ -1,0 +1,18 @@
+<section class="orders container">
+  <h1>My Orders</h1>
+  <div *ngIf="loading()">Loading…</div>
+  <div class="err" *ngIf="error()">{{ error() }}</div>
+  <div *ngIf="!loading() && !error() && orders().length === 0">No orders yet.</div>
+  <div class="list" *ngIf="orders().length">
+    <div class="row" *ngFor="let o of orders()">
+      <div class="meta">
+        <div class="id">#{{ o.id }}</div>
+        <div class="date">{{ o.created_at | date: 'medium' }}</div>
+      </div>
+      <div class="price">{{ o.amount | currency: (o.currency || 'INR') }}</div>
+      <div class="status">{{ o.status }}</div>
+      <a class="btn" [routerLink]="['/track']" [queryParams]="{ id: o.id }">Track</a>
+    </div>
+  </div>
+</section>
+

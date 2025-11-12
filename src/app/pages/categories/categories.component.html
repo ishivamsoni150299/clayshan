@@ -1,0 +1,16 @@
+<section class="container cats">
+  <header class="head">
+    <h1>All Categories</h1>
+    <input type="search" placeholder="Search categories" [value]="q()" (input)="q.set($any($event.target).value)" />
+  </header>
+  <div class="grid" *ngIf="!loading(); else pending">
+    <a class="card" *ngFor="let c of filtered()" [routerLink]="['/collections']" [queryParams]="{ category: c.name }">
+      <div class="name">{{ c.name }}</div>
+      <div class="count">{{ c.count }} items</div>
+    </a>
+  </div>
+  <ng-template #pending>
+    <div class="loading">Loading…</div>
+  </ng-template>
+</section>
+

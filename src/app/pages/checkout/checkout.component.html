@@ -1,0 +1,33 @@
+<section class="container checkout" *ngIf="cart.items().length; else empty">
+  <h1>Checkout</h1>
+  <div class="grid">
+    <form class="panel" (ngSubmit)="pay()">
+      <h2>Shipping details</h2>
+      <label>Name<input [(ngModel)]="nameStr" name="name" required /></label>
+      <label>Email<input type="email" [(ngModel)]="emailStr" name="email" required /></label>
+      <label>Phone<input [(ngModel)]="phoneStr" name="phone" required /></label>
+      <label>Address line 1<input [(ngModel)]="line1Str" name="line1" required /></label>
+      <label>Address line 2 (optional)<input [(ngModel)]="line2Str" name="line2" /></label>
+      <div class="row2">
+        <label>City<input [(ngModel)]="cityStr" name="city" required /></label>
+        <label>State<input [(ngModel)]="stateStr" name="state" required /></label>
+      </div>
+      <label>Pincode<input [(ngModel)]="pincodeStr" name="pincode" required /></label>
+      <div class="err" *ngIf="error()">{{ error() }}</div>
+      <button class="btn primary" type="submit" [disabled]="!valid || loading()">{{ loading() ? 'Processing…' : 'Pay now' }}</button>
+      <a class="btn" routerLink="/cart">Back to cart</a>
+    </form>
+    <aside class="summary panel">
+      <h2>Order summary</h2>
+      <div class="line" *ngFor="let it of cart.items()">
+        <div class="name">{{ it.name }} × {{ it.qty }}</div>
+        <div class="price">{{ (it.price * it.qty) | currency: (it.currency || 'INR') }}</div>
+      </div>
+      <div class="total">Total <span>{{ total() | currency: (cart.items()[0]?.currency || 'INR') }}</span></div>
+    </aside>
+  </div>
+</section>
+
+<ng-template #empty>
+  <section class="container"><p>Your cart is empty. <a routerLink="/collections">Continue shopping</a></p></section>
+</ng-template>

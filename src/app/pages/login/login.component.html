@@ -1,0 +1,17 @@
+<section class="login container">
+  <h1>Sign in</h1>
+  <form (ngSubmit)="submit()">
+    <label>
+      <span>Email</span>
+      <input type="email" [(ngModel)]="emailStr" name="email" required />
+    </label>
+    <label>
+      <span>Password</span>
+      <input type="password" [(ngModel)]="passwordStr" name="password" required />
+    </label>
+    <button class="btn primary" type="submit" [disabled]="loading()">{{ loading() ? 'Signing in…' : 'Sign in' }}</button>
+    <div class="err" *ngIf="error()">{{ error() }}</div>
+  </form>
+  <p class="hint">Don’t have an account? <a routerLink="/signup">Create one</a></p>
+  <p class="hint">Forgot password? <a href="#" (click)="$event.preventDefault(); onForgot()">Reset it</a></p>
+</section>

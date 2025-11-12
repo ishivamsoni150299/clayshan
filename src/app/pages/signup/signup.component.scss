@@ -1,0 +1,9 @@
+.signup { max-width: 420px; padding: 24px 0; }
+form { display: grid; gap: 12px; }
+label { display: grid; gap: 6px; }
+input { padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; }
+.btn.primary { padding: 10px 14px; border-radius: 8px; }
+.err { color: #b00020; margin-top: 8px; }
+.info { color: #0b7; margin-top: 8px; }
+.hint { color: #666; margin-top: 12px; }
+

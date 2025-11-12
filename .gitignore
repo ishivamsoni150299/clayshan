@@ -46,3 +46,5 @@ server.out.log
 server.err.log
 supabase/.temp
 import.env
+silverbene.token
+.env.local

@@ -1,0 +1,18 @@
+<section class="signup container">
+  <h1>Create account</h1>
+  <form (ngSubmit)="submit()">
+    <label>
+      <span>Email</span>
+      <input type="email" [(ngModel)]="emailStr" name="email" required />
+    </label>
+    <label>
+      <span>Password</span>
+      <input type="password" [(ngModel)]="passwordStr" name="password" minlength="6" required />
+    </label>
+    <button class="btn primary" type="submit" [disabled]="loading()">{{ loading() ? 'Creating…' : 'Create account' }}</button>
+    <div class="err" *ngIf="error()">{{ error() }}</div>
+    <div class="info" *ngIf="info()">{{ info() }}</div>
+  </form>
+  <p class="hint">Already have an account? <a routerLink="/login">Sign in</a></p>
+</section>
+

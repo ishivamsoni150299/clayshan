@@ -1,8 +1,8 @@
-<div class="offer" role="region" aria-label="Offers">
+<div *ngIf="!hidden()" class="offer" role="region" aria-label="Offers" aria-live="polite" (mouseenter)="onEnter()" (mouseleave)="onLeave()">
   <div class="inner">
-    <span>FREE SHIPPING on all orders</span>
-    <span class="dot">•</span>
-    <span>Express delivery on prepaid orders</span>
+    <span class="msg">{{ messages[idx()] }}</span>
+    <button class="close" (click)="close()" aria-label="Hide offer">×</button>
   </div>
   <div class="divider" aria-hidden="true"></div>
-  </div>
+</div>
+

@@ -1,4 +1,4 @@
-﻿import { Component, OnInit, AfterViewInit, OnDestroy, signal, computed, inject, ElementRef, ViewChild } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy, signal, computed, inject, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ProductService } from '../../services/product.service';
 import { ProductCardComponent } from '../../components/shared/product-card/product-card.component';
@@ -14,7 +14,7 @@ import { ActivatedRoute, Router } from '@angular/router';
   templateUrl: './collections.component.html',
 })
 export class CollectionsComponent implements OnInit, AfterViewInit, OnDestroy {
-  constructor(public productService: ProductService) {}
+  constructor(public productService: ProductService) {} 
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   query = signal('');
@@ -24,10 +24,8 @@ export class CollectionsComponent implements OnInit, AfterViewInit, OnDestroy {
   max = signal<number | null>(null);
   featured = signal(false);
   filtersOpen = signal(false);
-  // Pin featured items (slugs) at the top of Recommended
   private pinned = ['sb-MLLM_523187510095'];
   isPinned(slug: string | undefined | null): boolean { return !!slug && this.pinned.includes(slug); }
-  // sticky filter bar helpers
   setCategory(c: string | null) { this.category.set(c); this.pushUrl(); }
   setQuery(q: string) { this.query.set(q); this.pushUrlDebounced(); }
   setSort(s: 'reco'|'price_asc'|'price_desc'|'name_asc') { this.sort.set(s); this.pushUrl(); }
@@ -37,8 +35,6 @@ export class CollectionsComponent implements OnInit, AfterViewInit, OnDestroy {
   clearFilters() { this.query.set(''); this.category.set(null); this.min.set(null); this.max.set(null); this.pushUrl(); }
   openFilters() { this.filtersOpen.set(true); }
   closeFilters() { this.filtersOpen.set(false); }
-
-  // Active chips helpers
   hasActive(): boolean { return !!(this.query() || this.category() || this.min() != null || this.max() != null || this.featured()); }
   clearQuery() { this.query.set(''); this.pushUrl(); }
   clearCategory() { this.category.set(null); this.pushUrl(); }
@@ -57,50 +53,31 @@ export class CollectionsComponent implements OnInit, AfterViewInit, OnDestroy {
       const matchesMax = max == null || p.price <= max;
       return matchesQ && matchesC && matchesMin && matchesMax;
     });
-    if (this.featured()) {
-      list = list.filter(p => this.isPinned(p.slug as any));
-    }
+    if (this.featured()) list = list.filter(p => this.isPinned(p.slug as any));
     const s = this.sort();
     if (s === 'price_asc') list = list.sort((a,b) => a.price - b.price);
     if (s === 'price_desc') list = list.sort((a,b) => b.price - a.price);
     if (s === 'name_asc') list = list.sort((a,b) => a.name.localeCompare(b.name));
-    if (s === 'reco') {
-      const order = new Map(this.pinned.map((slug, i) => [slug, i] as const));
-      list = list.sort((a: any, b: any) => {
-        const as = order.has(a.slug) ? order.get(a.slug)! : Number.POSITIVE_INFINITY;
-        const bs = order.has(b.slug) ? order.get(b.slug)! : Number.POSITIVE_INFINITY;
-        if (as !== bs) return as - bs;
-        const at = a.created_at ? Date.parse(a.created_at) : 0;
-        const bt = b.created_at ? Date.parse(b.created_at) : 0;
-        return bt - at;
-      });
-    }
     return list;
   });
   categories = computed(() => Array.from(new Set((this.productService.products() || []).map(p => p.category))));
-  extentMin = computed(() => {
-    const prices = (this.productService.products() || []).map(p => p.price);
-    return prices.length ? Math.min(...prices) : 0;
-  });
-  extentMax = computed(() => {
-    const prices = (this.productService.products() || []).map(p => p.price);
-    return prices.length ? Math.max(...prices) : 20000;
-  });
-  // Infinite scroll state
+  extentMin = computed(() => { const prices = (this.productService.products() || []).map(p => p.price); return prices.length ? Math.min(...prices) : 0; });
+  extentMax = computed(() => { const prices = (this.productService.products() || []).map(p => p.price); return prices.length ? Math.max(...prices) : 20000; });
   visible = signal(12);
-  items = computed(() => this.filtered().slice(0, this.visible()));
+  items = computed(() => (this.productService.products() || []).slice(0, this.visible()));
   more() { this.visible.set(this.visible() + 12); }
+  reviewAvg = (slug: string | undefined | null) => { const m = this.productService.reviewsSummary(); return slug && m[slug] ? m[slug].avg : null; };
+  reviewCount = (slug: string | undefined | null) => { const m = this.productService.reviewsSummary(); return slug && m[slug] ? m[slug].count : null; };
+  
   @ViewChild('sentinel', { static: false }) sentinel?: ElementRef<HTMLElement>;
   private io?: IntersectionObserver;
-  // Pull-to-refresh (mobile)
   pulling = signal(false);
   pullY = signal(0);
   refreshing = signal(false);
   private startY = 0;
   angle() { return Math.min(180, this.pullY() * 3); }
   ngOnInit(): void {
-    this.productService.loadProducts();
-    // initialize from URL
+    this.fetchServer();
     this.route.queryParamMap.subscribe((m) => {
       this.query.set(m.get('q') || '');
       this.category.set(m.get('category'));
@@ -108,7 +85,24 @@ export class CollectionsComponent implements OnInit, AfterViewInit, OnDestroy {
       const min = m.get('min'); this.min.set(min ? Number(min) : null);
       const max = m.get('max'); this.max.set(max ? Number(max) : null);
       const f = m.get('featured'); this.featured.set(f === '1' || f === 'true');
+      this.fetchServer();
     });
+  }
+
+  private async fetchServer() {
+    await this.productService.loadProducts({
+      q: this.query() || undefined,
+      category: this.category() || undefined,
+      min: this.min(),
+      max: this.max(),
+      sort: this.sort() === 'reco' ? undefined : this.sort(),
+      page: 1, per: 36,
+      featured: this.featured() || undefined,
+    });
+    try {
+      const slugs = (this.productService.products() || []).map(p => p.slug).filter(Boolean) as string[];
+      await this.productService.loadReviewSummary(slugs.slice(0, 50));
+    } catch {}
   }
 
   ngAfterViewInit(): void {
@@ -152,7 +146,7 @@ export class CollectionsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.pulling.set(false);
     if (shouldRefresh) {
       this.refreshing.set(true);
-      try { await this.productService.loadProducts(); } catch {}
+      try { await this.fetchServer(); } catch {}
       this.refreshing.set(false);
     }
     this.pullY.set(0);
@@ -167,6 +161,7 @@ export class CollectionsComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.max() != null) qp.max = this.max();
     if (this.featured()) qp.featured = 1;
     this.router.navigate([], { relativeTo: this.route, queryParams: qp, queryParamsHandling: '' });
+    this.fetchServer();
   }
   private pushUrlTimer: any;
   private pushUrlDebounced() {
@@ -174,3 +169,8 @@ export class CollectionsComponent implements OnInit, AfterViewInit, OnDestroy {
     this.pushUrlTimer = setTimeout(() => this.pushUrl(), 300);
   }
 }
+
+
+
+
+

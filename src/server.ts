@@ -1,4 +1,4 @@
-﻿﻿import {
+import {
   AngularNodeAppEngine,
   createNodeRequestHandler,
   isMainModule,
@@ -20,6 +20,27 @@ const browserDistFolder = join(import.meta.dirname, '../browser');
 const app = express();
 // Avoid 304/ETag issues for dynamic API responses
 app.set('etag', false);
+// Security headers (lightweight baseline; adjust CSP as needed)
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  if (process.env['NODE_ENV'] === 'production') {
+    const csp = [
+      "default-src 'self'",
+      "img-src 'self' data: https:",
+      "connect-src 'self' https://s.silverbene.com",
+      "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com",
+      "frame-src https://checkout.razorpay.com https://api.razorpay.com",
+    ].join('; ');
+    res.setHeader('Content-Security-Policy', csp);
+    // HSTS (be careful behind proxies; assumes HTTPS at edge)
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  next();
+});
 app.use(express.json());
 // Ensure API responses are not cached by the browser
 app.use('/api', (_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
@@ -39,6 +60,27 @@ app.use((req, res, next) => {
   if (req.method === 'OPTIONS') { res.sendStatus(200); return; }
   next();
 });
+
+// Simple in-memory rate limiter for checkout endpoints
+const rlMap = new Map<string, { count: number; ts: number }>();
+function rateLimit(windowMs: number, max: number) {
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    try {
+      const key = `${req.ip || req.headers['x-forwarded-for'] || 'ip'}:${req.path}`;
+      const now = Date.now();
+      const rec = rlMap.get(key);
+      if (!rec || (now - rec.ts) > windowMs) {
+        rlMap.set(key, { count: 1, ts: now });
+        return next();
+      }
+      rec.count += 1; rec.ts = now; rlMap.set(key, rec);
+      if (rec.count > max) { res.status(429).json({ error: 'Too many requests' }); return; }
+      next();
+    } catch { next(); }
+  };
+}
+
+app.use('/api/checkout', rateLimit(60_000, 10));
 const angularApp = new AngularNodeAppEngine();
 
 /**
@@ -214,6 +256,36 @@ app.post('/api/auth/logout', async (_req, res) => {
 
 app.get('/api/auth/me', async (req, res) => {
   res.json({ email: req.cookies?.[SB_EMAIL] || null, admin: isAdmin(req) });
+});
+
+// Customer sign up (email/password)
+app.post('/api/auth/signup', async (req, res) => {
+  try {
+    if (!supabaseAuth) { res.status(503).json({ error: 'Supabase anon not configured' }); return; }
+    const { email, password } = req.body || {};
+    if (!email || !password) { res.status(400).json({ error: 'Missing email/password' }); return; }
+    const { data, error } = await supabaseAuth.auth.signUp({ email, password });
+    if (error) { res.status(400).json({ error: error.message }); return; }
+    res.json({ ok: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || 'Signup error' });
+  }
+});
+
+// Forgot password (sends reset email)
+app.post('/api/auth/forgot', async (req, res) => {
+  try {
+    if (!supabaseAuth) { res.status(503).json({ error: 'Supabase anon not configured' }); return; }
+    const { email } = req.body || {};
+    if (!email) { res.status(400).json({ error: 'Missing email' }); return; }
+    const base = (process.env['PUBLIC_SITE_URL'] || `http://localhost:${process.env['PORT'] || 4000}`);
+    const redirectTo = `${base}/login`;
+    const { error } = await supabaseAuth.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) { res.status(400).json({ error: error.message }); return; }
+    res.json({ ok: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || 'Forgot password error' });
+  }
 });
 
 // CRUD endpoints (server-side via service role)
@@ -456,6 +528,18 @@ function cacheSet(key: string, data: any, ttlMs: number) {
   __memCache.set(key, { exp: Date.now() + Math.max(0, ttlMs) , data });
 }
 
+// Keyword hints per category to maximize coverage when filtering
+const CATEGORY_KEYWORDS: Record<string, string> = {
+  'Earrings': 'earring,stud,hoop',
+  'Rings': 'ring',
+  'Necklaces': 'necklace,pendant,choker,chain',
+  'Bracelets': 'bracelet,bangle,kada,cuff',
+  'Anklets': 'anklet,payal',
+  'Bangles': 'bangle',
+  'Pendants': 'pendant',
+  'Chains': 'chain',
+};
+
 async function sbFetch(path: string, query: Record<string, string | number | undefined>, cacheMs?: number): Promise<any> {
   const q = new URLSearchParams();
   const token = getSupplierToken() || DS_BEARER;
@@ -641,8 +725,12 @@ app.delete('/api/admin/products/slug/:slug', requireAdmin, async (req, res) => {
 // Public: get a thumbnail URL for a supplier product (first match by keywords)
 app.get('/api/supplier/thumbnail', async (req, res) => {
   try {
-    const keywords = String((req.query as any)['keywords'] || '').trim();
-    if (!keywords) { res.status(400).json({ error: 'Missing keywords' }); return; }
+    let keywords = String((req.query as any)['keywords'] || '').trim();
+    const category = String((req.query as any)['category'] || '').trim();
+    if (!keywords && category) {
+      keywords = CATEGORY_KEYWORDS[category] || '';
+    }
+    if (!keywords) { res.status(400).json({ error: 'Missing keywords/category' }); return; }
     // Use recent two months window as elsewhere
     const now = new Date();
     const end = `${now.getFullYear()}-${now.getMonth()+1}`;
@@ -747,10 +835,19 @@ app.post('/api/dropship/webhook', express.json(), async (req, res) => {
     res.status(500).json({ error: e?.message || 'Webhook error' });
   }
 });
+
+// Disable admin endpoints entirely (return 404) unless ADMIN_ENABLED=1
+if (String(process.env['ADMIN_ENABLED']||'0') !== '1') {
+  app.use('/api/admin', (_req, res) => { res.status(404).json({ error: 'Admin disabled' }); });
+}
+
 app.get('/api/products', async (req, res, next) => {
   try {
-    const q = String((req.query as any)['q'] || '').trim();
+    const qRaw = String((req.query as any)['q'] || '').trim();
     const category = String((req.query as any)['category'] || '').trim();
+    const page = Math.max(1, parseInt(String((req.query as any)['page'] || '1'), 10) || 1);
+    const per = Math.min(60, Math.max(1, parseInt(String((req.query as any)['per'] || '36'), 10) || 36));
+    const sort = String((req.query as any)['sort'] || '').trim(); // price_asc|price_desc
     const min = Number((req.query as any)['min'] || '') || undefined;
     const max = Number((req.query as any)['max'] || '') || undefined;
     const featuredOnly = String((req.query as any)['featured'] || '').trim().toLowerCase() === 'true';
@@ -759,31 +856,42 @@ app.get('/api/products', async (req, res, next) => {
     const NO_DB = /^(1|true)$/i.test(String(process.env['NO_DB_CATALOG'] || ''));
     if (NO_DB) {
       try {
-        // Strategy: hunt windows up to ~12 months back to ensure we show products.
-        const want = 36; // aim to show at least 36 items
+        // Strategy: hunt windows up to ~24 months back to ensure we show products.
+        // Aim for a healthy catalog; try to gather at least this many
+        const want = 120;
         const acc: any[] = [];
         const now = new Date();
-        // Try 6 two-month windows (last year) with real-time stock first
-        for (let back = 0; back < 6 && acc.length < want; back++) {
+        // preferred keywords based on category or q
+        const kwPref = category && CATEGORY_KEYWORDS[category] ? CATEGORY_KEYWORDS[category] : (qRaw || undefined);
+        // Try 12 two-month windows (~24 months) with real-time stock first
+        for (let back = 0; back < 12 && acc.length < want; back++) {
           const endDate = new Date(now.getFullYear(), now.getMonth() - (back*2), 1);
           const startDate = new Date(now.getFullYear(), now.getMonth() - (back*2 + 1), 1);
           const end = `${endDate.getFullYear()}-${endDate.getMonth()+1}`;
           const start = `${startDate.getFullYear()}-${startDate.getMonth()+1}`;
-          const data = await sbFetch('/product_list_by_date', { start_date: start, end_date: end, is_really_stock: 1, keywords: q || undefined });
+          const data = await sbFetch('/product_list_by_date', { start_date: start, end_date: end, is_really_stock: 1, keywords: kwPref }, 300000);
           const raw: any[] = data?.data?.data || [];
           for (const r of raw) acc.push(r);
         }
         // If still empty, repeat without real-time stock limitation
         if (acc.length === 0) {
-          for (let back = 0; back < 6 && acc.length < want; back++) {
+          for (let back = 0; back < 12 && acc.length < want; back++) {
             const endDate = new Date(now.getFullYear(), now.getMonth() - (back*2), 1);
             const startDate = new Date(now.getFullYear(), now.getMonth() - (back*2 + 1), 1);
             const end = `${endDate.getFullYear()}-${endDate.getMonth()+1}`;
             const start = `${startDate.getFullYear()}-${startDate.getMonth()+1}`;
-            const data = await sbFetch('/product_list_by_date', { start_date: start, end_date: end, is_really_stock: 0, keywords: q || undefined });
+            const data = await sbFetch('/product_list_by_date', { start_date: start, end_date: end, is_really_stock: 0, keywords: kwPref }, 300000);
             const raw: any[] = data?.data?.data || [];
             for (const r of raw) acc.push(r);
           }
+        }
+        // If still too few, fall back to non-dated list to broaden results
+        if (acc.length < want / 2) {
+          try {
+            const data = await sbFetch('/product_list', {} as any, 300000);
+            const raw: any[] = data?.data?.data || [];
+            for (const r of raw) acc.push(r);
+          } catch { /* ignore and continue with what we have */ }
         }
         let list = acc.map(mapSbProduct);
         // Deduplicate by supplier_sku
@@ -793,10 +901,15 @@ app.get('/api/products', async (req, res, next) => {
         if (category) list = list.filter(p => p.category === category);
         if (typeof min === 'number') list = list.filter(p => p.price >= (min as number));
         if (typeof max === 'number') list = list.filter(p => p.price <= (max as number));
-        if (q) list = list.filter(p => (p.name + ' ' + p.description).toLowerCase().includes(q.toLowerCase()));
+        if (qRaw) list = list.filter(p => (p.name + ' ' + p.description).toLowerCase().includes(qRaw.toLowerCase()));
+        if (sort === 'price_asc') list.sort((a,b) => a.price - b.price);
+        else if (sort === 'price_desc') list.sort((a,b) => b.price - a.price);
         if (featuredOnly) list = list.filter((x: any) => x.featured === true);
         if (list.length === 0) res.setHeader('X-Supplier-Empty', '1');
-        res.json(list);
+        // paginate
+        const startIdx = (page - 1) * per;
+        const paged = list.slice(startIdx, startIdx + per);
+        res.json(paged);
         return;
       } catch (e) {
         console.warn('Supplier list error:', (e as any)?.message);
@@ -811,7 +924,7 @@ app.get('/api/products', async (req, res, next) => {
       if (category) list = list.filter(p => p.category === category);
       if (typeof min === 'number') list = list.filter(p => p.price >= min!);
       if (typeof max === 'number') list = list.filter(p => p.price <= max!);
-      if (q) list = list.filter(p => (p.name + ' ' + p.description + ' ' + (p.tags||[]).join(' ')).toLowerCase().includes(q.toLowerCase()));
+      if (qRaw) list = list.filter(p => (p.name + ' ' + p.description + ' ' + (p.tags||[]).join(' ')).toLowerCase().includes(qRaw.toLowerCase()));
       if (featuredOnly) list = list.filter((x: any) => x.featured === true);
       res.json(list);
       return;
@@ -821,7 +934,7 @@ app.get('/api/products', async (req, res, next) => {
     if (typeof min === 'number') sel = sel.gte('price', min as any);
     if (typeof max === 'number') sel = sel.lte('price', max as any);
     if (featuredOnly) sel = sel.eq('featured', true);
-    if (q) sel = sel.or(`name.ilike.%${q}%,description.ilike.%${q}%,tags.cs.{${q}}` as any);
+    if (qRaw) sel = sel.or(`name.ilike.%${qRaw}%,description.ilike.%${qRaw}%,tags.cs.{${qRaw}}` as any);
     const { data, error } = await sel.order('created_at', { ascending: false });
     if (error) {
       console.warn('Supabase products error:', error.message);
@@ -858,6 +971,19 @@ app.get('/api/admin/orders/:id', requireAdmin, async (req, res) => {
   if (error) { res.status(500).json({ error: error.message }); return; }
   if (!data) { res.status(404).json({ error: 'Not found' }); return; }
   res.json(data);
+});
+
+// Supplier stock refresh for option_id CSV
+app.get('/api/supplier/option_qty', async (req, res) => {
+  try {
+    const ids = String((req.query as any).ids || '').trim();
+    if (!ids) { res.status(400).json({ error: 'Missing ids' }); return; }
+    const data = await sbFetch('/option_qty', { option_id: ids }, 60000);
+    const arr: any[] = Array.isArray(data?.data) ? data.data : [];
+    res.json(arr);
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || 'Stock fetch error' });
+  }
 });
 
 // Admin: Rehost local images to Supabase Storage and update products
@@ -1056,8 +1182,107 @@ app.post('/api/contact', async (req, res, next) => {
   }
 });
 
+// Reviews API (real ratings)
+const reviewsMem: Record<string, { stars: number; text: string; name?: string; created_at: string }[]> = {};
+
+app.get('/api/reviews/:slug', async (req, res) => {
+  const slug = String(req.params.slug || '').trim();
+  if (!slug) { res.status(400).json({ error: 'Missing slug' }); return; }
+  try {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('reviews')
+        .select('stars,text,name,created_at')
+        .eq('slug', slug)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (error) { res.status(500).json({ error: error.message }); return; }
+      res.json(data || []);
+      return;
+    }
+    res.json(reviewsMem[slug] || []);
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || 'Reviews fetch error' });
+  }
+});
+
+app.get('/api/reviews/summary', async (req, res) => {
+  const slugs = String((req.query as any).slugs || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (!slugs.length) { res.json({}); return; }
+  try {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('reviews')
+        .select('slug, stars')
+        .in('slug', slugs);
+      if (error) { res.status(500).json({ error: error.message }); return; }
+      const map: Record<string, { count: number; sum: number }> = {};
+      for (const r of (data || []) as any[]) {
+        const k = String((r as any).slug);
+        const s = Number((r as any).stars || 0);
+        if (!map[k]) map[k] = { count: 0, sum: 0 };
+        map[k].count++; map[k].sum += s;
+      }
+      const out: Record<string, { avg: number; count: number }> = {};
+      for (const k of slugs) {
+        const m = map[k];
+        out[k] = m ? { avg: Math.round((m.sum / m.count) * 10) / 10, count: m.count } : { avg: 0, count: 0 };
+      }
+      res.json(out);
+      return;
+    }
+    const out: Record<string, { avg: number; count: number }> = {};
+    for (const k of slugs) {
+      const arr = reviewsMem[k] || [];
+      const sum = arr.reduce((a, b) => a + Number(b.stars || 0), 0);
+      out[k] = arr.length ? { avg: Math.round((sum / arr.length) * 10) / 10, count: arr.length } : { avg: 0, count: 0 };
+    }
+    res.json(out);
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || 'Summary error' });
+  }
+});
+
+app.post('/api/reviews', async (req, res) => {
+  const { slug, stars, text, name } = req.body || {};
+  const s = Number(stars);
+  const safeText = String(text || '').trim();
+  const safeName = String(name || 'Guest').trim();
+  if (!slug || !safeText || !(s >= 1 && s <= 5)) { res.status(400).json({ error: 'Invalid payload' }); return; }
+  try {
+    if (supabase) {
+      const { error } = await supabase.from('reviews').insert([{ slug, stars: s, text: safeText, name: safeName }]);
+      if (error) { res.status(500).json({ error: error.message }); return; }
+    } else {
+      const arr = reviewsMem[slug] = reviewsMem[slug] || [];
+      arr.unshift({ stars: s, text: safeText, name: safeName, created_at: new Date().toISOString() });
+    }
+    res.json({ ok: true });
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message || 'Insert error' });
+  }
+});
+
 // Public order lookup by id + email (limited fields)
-app.get('/api/orders/:id', async (req, res) => {
+
+// Customer: list orders for current session email
+app.get('/api/my/orders', async (req, res) => {
+  try {
+    if (!supabase) { res.json([]); return; }
+    const email = String(req.cookies?.[SB_EMAIL] || '').toLowerCase();
+    if (!email) { res.status(401).json({ error: 'Not logged in' }); return; }
+    const { data, error } = await supabase
+      .from('orders')
+      .select('id, amount, currency, status, created_at')
+      .eq('email', email)
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) { res.status(500).json({ error: error.message }); return; }
+    res.json(data || []);
+  } catch (e: any) {
+    res.status(500).json({ error: (e && (e as any).message) || 'My orders error' });
+  }
+});app.get('/api/orders/:id', async (req, res) => {
   try {
     const id = req.params.id;
     const email = String((req.query as any).email || '').toLowerCase();

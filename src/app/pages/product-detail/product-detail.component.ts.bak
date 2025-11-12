@@ -1,0 +1,463 @@
+import { Component, OnInit, AfterViewInit, OnDestroy, Signal, inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { CommonModule, CurrencyPipe } from '@angular/common';
+import { ActivatedRoute, RouterLink, Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { ProductCardComponent } from '../../components/shared/product-card/product-card.component';
+import { ProductService } from '../../services/product.service';
+import type { Product } from '../../models/product';
+import { CartService } from '../../services/cart.service';
+import { WishlistService } from '../../services/wishlist.service';
+import { Meta, Title } from '@angular/platform-browser';
+import { WHATSAPP_NUMBER, WHATSAPP_DEFAULT_MESSAGE, SITE_NAME } from '../../config';
+import { ORDER_CUTOFF_HOUR_LOCAL, FREE_SHIPPING_THRESHOLD_INR } from '../../config';
+
+@Component({
+  selector: 'app-product-detail',
+  standalone: true,
+  imports: [CommonModule, FormsModule, RouterLink, CurrencyPipe, ProductCardComponent],
+  styleUrls: ['./product-detail.component.scss'],
+  templateUrl: './product-detail.component.html',
+})
+export class ProductDetailComponent implements OnInit, AfterViewInit, OnDestroy {
+  product?: Product;
+  private platformId = inject(PLATFORM_ID);
+  loaded = false; // mark client-side completion
+  qty = 1;
+  added = false;
+  cutoffText = '';
+  stockText = '';
+  // swipe state
+  private touchStartX: number | null = null;
+  private touchEndX: number | null = null;
+  selectedImage?: string;
+  // zoom state (desktop)
+  zoom = false;
+  origin = '50% 50%';
+  webpCandidate(url: string | undefined | null): string {
+    if (!url) return '';
+    const m = url.match(/\.(jpg|jpeg|png)$/i);
+    if (!m) return '';
+    return url.replace(/\.(jpg|jpeg|png)$/i, '.webp');
+  }
+  // variants (UI only, legacy demo)
+  tone: 'gold' | 'rose' | 'silver' = 'gold';
+  size: 'S' | 'M' | 'L' = 'M';
+  setTone(t: 'gold'|'rose'|'silver') { this.tone = t; }
+  setSize(s: 'S'|'M'|'L') { this.size = s; }
+  // Supplier-driven dynamic variants
+  variantAttrs: string[] = [];
+  attrValues: Record<string, string[]> = {};
+  selectedAttrs: Record<string, string> = {};
+  get selectedVariant(): any | null {
+    const vars = (this.product?.variants as any[]) || [];
+    if (!vars.length || !this.variantAttrs.length) return null;
+    return (
+      vars.find(v => {
+        const atts: any[] = Array.isArray(v?.attributes) ? v.attributes : [];
+        for (const name of this.variantAttrs) {
+          const sel = this.selectedAttrs[name];
+          if (!sel) return false;
+          const match = atts.find(a => String(a?.name).toLowerCase() === String(name).toLowerCase());
+          if (!match || String(match.value).toLowerCase() !== String(sel).toLowerCase()) return false;
+        }
+        return true;
+      }) || null
+    );
+  }
+  displayPrice(): number {
+    const sv = this.selectedVariant as any;
+    return Number(sv?.price_inr || this.product?.price || 0);
+  }
+  selectedVariantQty(): number {
+    const sv = this.selectedVariant as any;
+    return Number(sv?.qty ?? this.product?.inventory ?? 0) || 0;
+  }
+  setAttr(name: string, val: string) {
+    this.selectedAttrs[name] = val;
+    const q = this.selectedVariantQty();
+    this.stockText = q > 0 ? `In stock: ${q}` : 'Out of stock';
+    this.cdr.detectChanges();
+  }
+  // Price helpers similar to Amazon block
+  mrp(): number {
+    // If we had variant price, use that as base; synthesize an MRP assuming ~25% off
+    const p = this.product?.price || 0;
+    if (!p) return 0;
+    // ensure MRP >= price
+    const mrp = Math.round(p / 0.75);
+    return mrp < p ? p : mrp;
+  }
+  discountPercent(): number {
+    const p = this.product?.price || 0; const m = this.mrp();
+    if (!p || !m || m <= p) return 0;
+    return Math.max(0, Math.round(((m - p) / m) * 100));
+  }
+  stockNotice(): string {
+    const inv = (this.product?.inventory ?? 0) as number;
+    if (inv <= 0) return 'Out of stock';
+    if (inv <= 2) return `Only ${inv} left in stock.`;
+    return 'In stock';
+  }
+  // share
+  copied = false;
+  async copyLink() {
+    try {
+      const href = typeof window !== 'undefined' ? window.location.href : '';
+      await navigator.clipboard.writeText(href);
+      this.copied = true;
+      setTimeout(() => { this.copied = false; this.cdr.detectChanges(); }, 1600);
+      this.cdr.detectChanges();
+    } catch {}
+  }
+  prevImage() {
+    const imgs = this.images; if (!imgs.length) return;
+    const cur = this.selectedImage ? imgs.indexOf(this.selectedImage) : 0;
+    const next = (cur - 1 + imgs.length) % imgs.length;
+    this.selectedImage = imgs[next];
+  }
+  nextImage() {
+    const imgs = this.images; if (!imgs.length) return;
+    const cur = this.selectedImage ? imgs.indexOf(this.selectedImage) : 0;
+    const next = (cur + 1) % imgs.length;
+    this.selectedImage = imgs[next];
+  }
+  private get images(): string[] { return (this.product?.images || []).filter(Boolean); }
+  // Fullscreen lightbox (mobile-friendly)
+  fsOpen = false;
+  fsZoom = 1;
+  fsTx = 0; fsTy = 0;
+  private fsStartX = 0; private fsStartY = 0; private fsLastX = 0; private fsLastY = 0; private fsMoveX = 0;
+  constructor(private route: ActivatedRoute, private productService: ProductService, private cart: CartService, public wishlist: WishlistService, private cdr: ChangeDetectorRef, private meta: Meta, private title: Title, private router: Router) {}
+  jsonLdText = '';
+  breadcrumbJsonLd = '';
+  async ngOnInit(): Promise<void> {
+    const slug = this.route.snapshot.paramMap.get('slug') || '';
+    this.product = await this.productService.getBySlug(slug);
+    if (!this.product) {
+      await this.productService.loadProducts();
+      this.product = await this.productService.getBySlug(slug);
+    }
+    // load reviews for this product (local)
+    this.loadReviews();
+    if (this.product) {
+      // Derive variant attributes and possible values from supplier variants
+      try {
+        const vars = (this.product.variants as any[]) || [];
+        const names = new Set<string>();
+        const map: Record<string, Set<string>> = {} as any;
+        for (const v of vars) {
+          const atts: any[] = Array.isArray(v?.attributes) ? v.attributes : [];
+          for (const a of atts) {
+            const n = String(a?.name || '').trim();
+            const vv = String(a?.value || '').trim();
+            if (!n || !vv) continue;
+            names.add(n);
+            if (!map[n]) map[n] = new Set<string>();
+            map[n].add(vv);
+          }
+        }
+        this.variantAttrs = Array.from(names);
+        const obj: Record<string, string[]> = {};
+        for (const [k, v] of Object.entries(map)) obj[k] = Array.from(v);
+        this.attrValues = obj;
+        for (const n of this.variantAttrs) {
+          if (!this.selectedAttrs[n] && this.attrValues[n]?.length) this.selectedAttrs[n] = this.attrValues[n][0];
+        }
+        } catch {}
+        } catch {}
+      const t = `${this.product.name} - Clayshan Jewellery`;
+      this.title.setTitle(t);
+      this.meta.updateTag({ name: 'description', content: this.product.description?.slice(0, 160) || 'Modern Indian jewellery' });
+      this.meta.updateTag({ property: 'og:title', content: t });
+      this.meta.updateTag({ property: 'og:description', content: this.product.description || '' });
+      if (this.product.images && this.product.images[0]) this.meta.updateTag({ property: 'og:image', content: this.product.images[0] });
+      // JSON-LD schema
+      const images = (this.product.images || []).filter(Boolean);
+      const schema: any = {
+        '@context': 'https://schema.org',
+        '@type': 'Product',
+        name: this.product.name,
+        description: this.product.description || '',
+        image: images,
+        sku: this.product.id || this.product.slug,
+        brand: { '@type': 'Brand', name: 'Clayshan' },
+        offers: {
+          '@type': 'Offer',
+          price: this.product.price,
+          priceCurrency: this.product.currency || 'INR',
+          availability: 'https://schema.org/InStock'
+        }
+      };
+      try { schema.url = typeof window !== 'undefined' ? window.location.href : undefined; } catch {}
+      this.jsonLdText = JSON.stringify(schema);
+      // Low stock cue
+      const inv = (this.product as any).inventory as number | null | undefined;
+      if (typeof inv === 'number' && inv != null) {
+        if (inv <= 0) this.stockText = 'Currently out of stock';
+        else if (inv <= 3) this.stockText = `Only ${inv} left — selling fast!`;
+        else if (inv <= 10) this.stockText = `${inv} in stock`;
+      }
+      // Cutoff: order by HH:MM for same‑day dispatch
+      this.cutoffText = this.computeCutoffText();
+      // Breadcrumbs JSON-LD
+      const bctx: any = {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: '/' },
+          { '@type': 'ListItem', position: 2, name: 'Collections', item: '/collections' },
+          { '@type': 'ListItem', position: 3, name: this.product.name, item: undefined }
+        ]
+      };
+      try { bctx.itemListElement[0].item = (typeof window !== 'undefined') ? window.location.origin + '/' : '/'; } catch {}
+      try { bctx.itemListElement[1].item = (typeof window !== 'undefined') ? window.location.origin + '/collections' : '/collections'; } catch {}
+      try { bctx.itemListElement[2].item = (typeof window !== 'undefined') ? window.location.href : undefined; } catch {}
+      this.breadcrumbJsonLd = JSON.stringify(bctx);
+    }
+    this.cdr.detectChanges();
+    if (isPlatformBrowser(this.platformId)) {
+      this.loaded = true; // only flip on the client so SSR doesn't show 'not found'
+      try {
+        const rv = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
+        const id = (this.product?.id || this.product?.slug) as string;
+        const next = [id, ...rv.filter((x: string) => x !== id)].slice(0, 12);
+        localStorage.setItem('recentlyViewed', JSON.stringify(next));
+      // Keyboard navigation for gallery
+      } catch {}
+      this.keyListener = (ev: KeyboardEvent) => {
+        const imgs = this.images;
+        if (!imgs.length) return;
+        const cur = this.selectedImage ? imgs.indexOf(this.selectedImage) : 0;
+        if (ev.key === 'ArrowRight') {
+          const next = (cur + 1) % imgs.length;
+          this.selectedImage = imgs[next];
+          this.cdr.detectChanges();
+        } else if (ev.key === 'ArrowLeft') {
+          const next = (cur - 1 + imgs.length) % imgs.length;
+          this.selectedImage = imgs[next];
+          this.cdr.detectChanges();
+        }
+      };
+      window.addEventListener('keydown', this.keyListener);
+    }
+  }
+
+  ngAfterViewInit(): void {
+    // Defensive: ensure we break out of skeleton state after hydration
+    if (isPlatformBrowser(this.platformId)) {
+      setTimeout(() => { this.loaded = true; this.cdr.detectChanges(); }, 0);
+    }
+  }
+  ngOnDestroy(): void {
+    if (isPlatformBrowser(this.platformId) && this.keyListener) {
+      window.removeEventListener('keydown', this.keyListener);
+    }
+  }
+  addToCart() {
+    if (!this.product) return;
+    const baseId = this.product.id || this.product.slug;
+    const attrsList = Object.entries(this.selectedAttrs || {}).filter(([_,v]) => !!v).map(([k,v]) => `${k}: ${v}`);
+    const suffix = attrsList.length ? ` (${attrsList.join(', ')})` : '';
+    const id = attrsList.length ? `${baseId}|${attrsList.join('|')}` : baseId;
+    const name = this.product.name + suffix;
+    const price = this.displayPrice();
+    this.cart.add({ id, name, price, currency: this.product.currency, image: this.product.images[0] }, this.qty || 1);
+    this.added = true;
+    if (typeof window !== 'undefined') {
+      setTimeout(() => { this.added = false; }, 2500);
+    }
+  }
+  buyNow() {
+    if (!this.product) return;
+    const baseId = this.product.id || this.product.slug;
+    const attrsList = Object.entries(this.selectedAttrs || {}).filter(([_,v]) => !!v).map(([k,v]) => `${k}: ${v}`);
+    const suffix = attrsList.length ? ` (${attrsList.join(', ')})` : '';
+    const id = attrsList.length ? `${baseId}|${attrsList.join('|')}` : baseId;
+    const name = this.product.name + suffix;
+    const price = this.displayPrice();
+    this.cart.add({ id, name, price, currency: this.product.currency, image: this.product.images[0] }, Math.max(1, this.qty||1));
+    try { this.router.navigate(['/cart']); } catch {}
+  }
+  inc() { this.qty = Math.min(10, (this.qty || 1) + 1); }
+  dec() { this.qty = Math.max(1, (this.qty || 1) - 1); }
+
+  // Gallery state
+  select(img: string) { this.selectedImage = img; }
+  openFs() { this.fsOpen = true; this.fsZoom = 1; this.fsTx = 0; this.fsTy = 0; }
+  closeFs() { this.fsOpen = false; this.fsZoom = 1; this.fsTx = 0; this.fsTy = 0; }
+  toggleFsZoom() { this.fsZoom = this.fsZoom === 1 ? 2 : 1; if (this.fsZoom === 1) { this.fsTx = 0; this.fsTy = 0; } }
+  fsTouchStart(ev: TouchEvent) { this.fsStartX = ev.touches?.[0]?.clientX ?? 0; this.fsStartY = ev.touches?.[0]?.clientY ?? 0; this.fsLastX = this.fsStartX; this.fsLastY = this.fsStartY; this.fsMoveX = 0; }
+  fsTouchMove(ev: TouchEvent) {
+    const x = ev.touches?.[0]?.clientX ?? 0; const y = ev.touches?.[0]?.clientY ?? 0;
+    const dx = x - this.fsLastX; const dy = y - this.fsLastY;
+    this.fsLastX = x; this.fsLastY = y; this.fsMoveX += dx;
+    if (this.fsZoom > 1) { this.fsTx += dx; this.fsTy += dy; }
+  }
+  fsTouchEnd() {
+    // swipe navigation only when not zoomed
+    if (this.fsZoom === 1) {
+      const threshold = 40;
+      if (this.fsMoveX > threshold) this.prevImage(); else if (this.fsMoveX < -threshold) this.nextImage();
+    }
+    this.fsMoveX = 0;
+  }
+  onImgError(ev: Event) {
+    // Simpler, predictable fallback: do not auto-advance images.
+    const el = ev.target as HTMLImageElement;
+    if (!el) return;
+    // Try SVG fallback once, else placeholder.
+    try {
+      const tried = (el as any)._triedSvgFallback;
+      if (!tried && el.src) {
+        (el as any)._triedSvgFallback = true;
+        el.src = el.src.replace(/\.[^.]+$/, '.svg');
+        return;
+      }
+      } catch {}
+      el.src = 'assets/placeholder.svg';
+    }
+
+  // Zoom handlers (desktop hover)
+  zoomIn(ev: MouseEvent) { this.zoom = true; this.setOrigin(ev); }
+  zoomMove(ev: MouseEvent) { if (!this.zoom) return; this.setOrigin(ev); }
+  zoomOut() { this.zoom = false; }
+  private setOrigin(ev: MouseEvent) {
+    const el = ev.target as HTMLElement;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const x = ((ev.clientX - r.left) / r.width) * 100;
+    const y = ((ev.clientY - r.top) / r.height) * 100;
+    this.origin = `${x.toFixed(2)}% ${y.toFixed(2)}%`;
+  }
+
+  // Derived list for related products
+  get related(): Product[] {
+    const list = (this.productService.products() || []) as Product[];
+    return list.filter(p => p.slug !== this.product?.slug && p.category === this.product?.category).slice(0, 8);
+  }
+
+  // Pincode estimate (mock)
+  pin = '';
+  eta?: string;
+  checkPin() {
+    const days = 3 + Math.floor(Math.random() * 4);
+    const d = new Date(); d.setDate(d.getDate() + days);
+    this.eta = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  }
+
+  // Highlights (benefits) for PDP
+  get highlights(): string[] {
+    const base = [
+      '925 Sterling Silver, hypoallergenic',
+      'Rhodium-plated: lasting shine',
+      'Handcrafted with care',
+      'Free shipping across India'
+    ];
+    const tags = (this.product?.tags || []).map(t => String(t).toLowerCase());
+    if (tags.includes('kundan')) base.unshift('Modern Kundan-inspired design');
+    if (tags.includes('anklet')) base.unshift('Comfortable daily-wear anklet');
+    return Array.from(new Set(base)).slice(0, 6);
+  }
+
+    whatsappProductLink(p: Product): string {
+    try {
+      if (typeof window !== 'undefined') {
+        const msg = `Hello! I'm interested in ${p.name} from ${SITE_NAME}.\nLink: ${window.location.href}`;
+        return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
+      }
+    } catch {}
+    return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_DEFAULT_MESSAGE)}`;
+  }private computeCutoffText(): string {
+    try {
+      const now = new Date();
+      const cutoff = new Date(now);
+      cutoff.setHours(ORDER_CUTOFF_HOUR_LOCAL, 0, 0, 0);
+      if (now.getTime() >= cutoff.getTime()) {
+        // next business day cutoff (simple +24h)
+        cutoff.setDate(cutoff.getDate() + 1);
+      }
+      const diffMs = cutoff.getTime() - now.getTime();
+      const h = Math.floor(diffMs / 3600000);
+      const m = Math.floor((diffMs % 3600000) / 60000);
+      return `Order in ${h}h ${m}m for same‑day dispatch`;
+    } catch { return ''; }
+  }
+
+  // Touch swipe handlers (mobile gallery)
+  onTouchStart(ev: TouchEvent) { this.touchStartX = ev.touches?.[0]?.clientX ?? null; this.touchEndX = null; }
+  onTouchMove(ev: TouchEvent) { this.touchEndX = ev.touches?.[0]?.clientX ?? null; }
+  onTouchEnd() {
+    if (this.touchStartX == null || this.touchEndX == null) return;
+    const dx = this.touchEndX - this.touchStartX;
+    const threshold = 40; // px
+    const imgs = this.images;
+    if (!imgs.length) return;
+    const cur = this.selectedImage ? imgs.indexOf(this.selectedImage) : 0;
+    if (dx > threshold) {
+      // swipe right: previous
+      const next = (cur - 1 + imgs.length) % imgs.length;
+      this.selectedImage = imgs[next];
+    } else if (dx < -threshold) {
+      const next = (cur + 1) % imgs.length;
+      this.selectedImage = imgs[next];
+    }
+  }
+
+  // --- Reviews (real, via API with Supabase fallback) ---
+  reviews: { stars: number; text: string; name?: string; created_at?: string }[] = [];
+  newStars = 5;
+  newName = '';
+  newText = '';
+  get avgStars(): number {
+    const r = this.reviews; if (!r.length) return 0;
+    return Math.round((r.reduce((a, b) => a + (b.stars || 0), 0) / r.length) * 10) / 10;
+  }
+  get reviewsKey(): string {
+    const id = (this.product?.id || this.product?.slug || 'unknown');
+    return 'reviews_' + id;
+  }
+  async loadReviews() {
+    const slug = this.product?.slug || '';
+    if (!slug) { this.reviews = []; return; }
+    try {
+      const resp = await fetch(`/api/reviews/${encodeURIComponent(slug)}`);
+      if (resp.ok) {
+        this.reviews = await resp.json();
+      } else {
+        this.reviews = [];
+      }
+    } catch { this.reviews = []; }
+  }
+  selectStars(s: number) { this.newStars = s; }
+  async addReview(ev?: Event) {
+    if (ev) ev.preventDefault();
+    const text = (this.newText || '').trim();
+    const name = (this.newName || 'Guest').trim();
+    const stars = Math.max(1, Math.min(5, this.newStars || 5));
+    if (!text || !this.product) return;
+    try {
+      const resp = await fetch('/api/reviews', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug: this.product.slug, stars, text, name })
+      });
+      if (resp.ok) {
+        await this.loadReviews();
+        this.newText = ''; this.newName = ''; this.newStars = 5;
+        this.cdr.detectChanges();
+      }
+    } catch {}
+  }
+  shareNative() {
+    try {
+      if (typeof navigator !== 'undefined' && (navigator as any).share && this.product) {
+        (navigator as any).share({
+          title: this.product.name,
+          text: this.product.description || 'Check this out',
+          url: typeof window !== 'undefined' ? window.location.href : undefined,
+        });
+      }
+    } catch {}
+}
+  }
+

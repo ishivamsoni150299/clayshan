@@ -10,6 +10,7 @@ h1 { font-family: var(--heading-font); margin: 0 0 12px; color: var(--text-700);
 .toolbar .row { display: grid; grid-template-columns: 1fr 200px 200px auto; gap: 10px; align-items: center; }
 .toolbar .row.desktop { display: grid; }
 .toolbar .mobile-bar { display: none; }
+.toolbar .results { color: var(--text-600); font-size: 13px; }
 .toolbar input, .toolbar select { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); font: inherit; background: var(--surface); color: var(--text-900); }
 .toolbar .chips { display: flex; gap: 8px; flex-wrap: nowrap; overflow-x: auto; padding-top: 4px; }
 .chip { padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; }
@@ -35,7 +36,9 @@ input[type="search"], select { padding: 8px 10px; border-radius: 8px; border: 1p
 
 /* Filters drawer */
 .filter-sheet { border-top-left-radius: 16px; border-top-right-radius: 16px; padding: 12px; }
-.filter-sheet .head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+.filter-sheet .head { display: flex; align-items: center; gap: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+.filter-sheet .head .spacer { flex: 1; }
+.filter-sheet .head .link { background: transparent; border: 0; color: var(--brand-600); cursor: pointer; font-weight: 700; }
 .filter-sheet .title { font-weight: 800; }
 .filter-sheet .close { appearance: none; background: transparent; border: 0; font-size: 22px; cursor: pointer; }
 .filter-sheet .fields { display: grid; gap: 10px; }

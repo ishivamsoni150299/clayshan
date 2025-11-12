@@ -28,7 +28,8 @@ export class AdminService {
       if (res.ok) {
         const data = await res.json();
         this.email.set(data?.email || null);
-        this.loggedIn.set(!!data?.admin);
+        // Treat any authenticated email as logged-in customer for UI
+        this.loggedIn.set(!!data?.email);
       } else {
         this.email.set(null);
         this.loggedIn.set(false);
@@ -54,5 +55,21 @@ export class AdminService {
     const base = (typeof window === 'undefined') ? ((globalThis as any)?.process?.env?.API_BASE_URL || '') : '';
     await fetch(`${base || ''}/api/auth/logout`, { method: 'POST' });
     await this.refresh();
+  }
+
+  async signupEmail(email: string, password: string) {
+    const base = (typeof window === 'undefined') ? ((globalThis as any)?.process?.env?.API_BASE_URL || '') : '';
+    const res = await fetch(`${base || ''}/api/auth/signup`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password })
+    });
+    if (!res.ok) throw new Error((await res.json())?.error || 'Signup failed');
+  }
+
+  async forgot(email: string) {
+    const base = (typeof window === 'undefined') ? ((globalThis as any)?.process?.env?.API_BASE_URL || '') : '';
+    const res = await fetch(`${base || ''}/api/auth/forgot`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email })
+    });
+    if (!res.ok) throw new Error((await res.json())?.error || 'Request failed');
   }
 }

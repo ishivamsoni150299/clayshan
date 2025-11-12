@@ -1,12 +1,12 @@
-<section class="container collections" (touchstart)="onTouchStart($event)" (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd()">
+﻿<section class="container collections" (touchstart)="onTouchStart($event)" (touchmove)="onTouchMove($event)" (touchend)="onTouchEnd()">
   <div class="ptr" [style.height.px]="pullY()" [class.refreshing]="refreshing()">
     <div class="inner">
       <div class="spinner" *ngIf="refreshing(); else arrow"></div>
-      <ng-template #arrow><div class="arrow" [style.transform]="'rotate(' + angle() + 'deg)'">↻</div></ng-template>
+      <ng-template #arrow><div class="arrow" [style.transform]="'rotate(' + angle() + 'deg)'">?</div></ng-template>
       <div class="msg">{{ refreshing() ? 'Refreshing…' : (pullY()>60 ? 'Release to refresh' : 'Pull to refresh') }}</div>
     </div>
   </div>
-  <h1>Collections</h1>
+  <h1>Collections</h1>  
   <div class="toolbar sticky">
     <div class="row desktop">
       <input [value]="query()" (input)="setQuery($any($event.target).value)" type="search" placeholder="Search jewellery..." />
@@ -32,10 +32,10 @@
       <button class="chip" *ngFor="let c of categories()" [class.active]="category()===c" (click)="setCategory(c)">{{ c }}</button>
     </div>
     <div class="active-chips" *ngIf="hasActive()">
-      <button class="chip active" *ngIf="query()">“{{ query() }}” <span class="x" (click)="clearQuery()">×</span></button>
+      <button class="chip active" *ngIf="query()">{{ query() }} <span class="x" (click)="clearQuery()">×</span></button>
       <button class="chip active" *ngIf="category()">{{ category() }} <span class="x" (click)="clearCategory()">×</span></button>
-      <button class="chip active" *ngIf="min()!=null">Min ₹{{ min() }} <span class="x" (click)="clearMin()">×</span></button>
-      <button class="chip active" *ngIf="max()!=null">Max ₹{{ max() }} <span class="x" (click)="clearMax()">×</span></button>
+      <button class="chip active" *ngIf="min()!=null">Min ?{{ min() }} <span class="x" (click)="clearMin()">×</span></button>
+      <button class="chip active" *ngIf="max()!=null">Max ?{{ max() }} <span class="x" (click)="clearMax()">×</span></button>
       <button class="chip active" *ngIf="featured()">Featured <span class="x" (click)="clearFeatured()">×</span></button>
       <button class="chip clear-all" (click)="clearFilters()">Reset</button>
     </div>
@@ -45,7 +45,8 @@
       <app-skeleton-card *ngFor="let i of [1,2,3,4,5,6,7,8,9,10,11,12]"></app-skeleton-card>
     </ng-container>
     <ng-container *ngIf="productService.status() !== 'loading'">
-      <app-product-card *ngFor="let p of items()" [product]="p" [featured]="isPinned(p.slug)" />
+      <app-product-card *ngFor="let p of items()" [product]="p" [featured]="isPinned(p.slug)" [ratingAvg]="reviewAvg(p.slug)" [ratingCountExt]="reviewCount(p.slug)" />
+      <button class="load-more" *ngIf="items().length < (productService.products()?.length || 0)" (click)="more()">Load more</button>
       <div #sentinel class="sentinel" aria-hidden="true"></div>
     </ng-container>
     <div class="empty-state" *ngIf="productService.status() !== 'loading' && items().length === 0">
@@ -74,7 +75,7 @@
         <option *ngFor="let c of categories()" [ngValue]="c">{{ c }}</option>
       </select>
 
-      <label>Price range (₹{{ extentMin() }} – ₹{{ extentMax() }})</label>
+      <label>Price range (?{{ extentMin() }} – ?{{ extentMax() }})</label>
       <div class="range">
         <input type="range" [min]="extentMin()" [max]="extentMax()" [ngModel]="min() ?? extentMin()" (ngModelChange)="setMin($event)" />
         <input type="range" [min]="extentMin()" [max]="extentMax()" [ngModel]="max() ?? extentMax()" (ngModelChange)="setMax($event)" />
@@ -103,3 +104,5 @@
     </div>
   </div>
   </div>
+
+

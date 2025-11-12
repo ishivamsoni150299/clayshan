@@ -1,4 +1,4 @@
-ï»¿<header class="nav" [class.open]="open()" [class.compact]="compact()" [class.hidden]="hidden()">
+<header class="nav" [class.open]="open()" [class.compact]="compact()" [class.hidden]="hidden()">
   <div class="container">
     <a class="brand" routerLink="/" (click)="close()" aria-label="Clayshan home">
       <span class="brand-text">Clayshan</span>
@@ -17,12 +17,13 @@
       <a routerLink="/contact" routerLinkActive="active" (click)="close()">Contact</a>
       <a routerLink="/wishlist" routerLinkActive="active" (click)="close()">Wishlist <span class="count" *ngIf="wishlistCount() > 0">{{ wishlistCount() }}</span></a>
       <a routerLink="/track" routerLinkActive="active" (click)="close()">Track Order</a>
+      <a *ngIf="admin.loggedIn()" routerLink="/my/orders" routerLinkActive="active" (click)="close()">My Orders</a>
       <div class="cart-wrap" (click)="$event.stopPropagation()">
         <a href="#" class="cart-link" (click)="toggleCart($event)">Cart <span class="count" *ngIf="count() > 0">{{ count() }}</span></a>
         <div class="mini-cart" *ngIf="cartOpen()">
           <div *ngIf="items().length === 0" class="empty">Your cart is empty.</div>
           <div class="line" *ngFor="let it of items()">
-            <img [src]="it.image || 'assets/placeholder.svg'" alt="" (error)="imgError($event)" />
+            <img [src]="it.image || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII='" alt="" (error)="imgError($event)" />
             <div class="meta">
               <div class="name">{{ it.name }}</div>
               <div class="qty">
@@ -32,7 +33,7 @@
               </div>
             </div>
             <div class="price">{{ it.price * it.qty | currency: it.currency }}</div>
-            <button class="remove" (click)="remove(it.id)" aria-label="Remove">Ã—</button>
+            <button class="remove" (click)="remove(it.id)" aria-label="Remove">×</button>
           </div>
           <div class="total" *ngIf="items().length">
             <span>Subtotal</span><span>{{ total() | currency: (items()[0]?.currency || 'INR') }}</span>
@@ -42,8 +43,11 @@
           </div>
         </div>
       </div>
-      <a *ngIf="admin.loggedIn()" routerLink="/admin" routerLinkActive="active" (click)="close()">Admin</a>
-      <a *ngIf="admin.loggedIn()" routerLink="/admin/orders" routerLinkActive="active" (click)="close()">Orders</a>
+      <a *ngIf="!admin.loggedIn()" routerLink="/login" routerLinkActive="active" (click)="close()">Sign in</a>
+      <ng-container *ngIf="admin.loggedIn()">
+        <span class="user">Hi, {{ admin.email() }}</span>
+        <a routerLink="/logout" (click)="close()">Sign out</a>
+      </ng-container>
     </nav>
     <button class="menu" aria-label="Menu" [attr.aria-expanded]="open()" (click)="toggle()">
       <span></span><span></span><span></span>
@@ -56,9 +60,10 @@
       <a routerLink="/contact" (click)="close()">Contact</a>
       <a routerLink="/wishlist" (click)="close()">Wishlist <span class="count" *ngIf="wishlistCount() > 0">{{ wishlistCount() }}</span></a>
       <a routerLink="/track" (click)="close()">Track Order</a>
+      <a *ngIf="admin.loggedIn()" routerLink="/my/orders" (click)="close()">My Orders</a>
       <a routerLink="/cart" (click)="close()" class="cart-link">Cart <span class="count" *ngIf="count() > 0">{{ count() }}</span></a>
-      <a *ngIf="admin.loggedIn()" routerLink="/admin" (click)="close()">Admin</a>
-      <a *ngIf="admin.loggedIn()" routerLink="/admin/orders" (click)="close()">Orders</a>
+      <a *ngIf="!admin.loggedIn()" routerLink="/login" (click)="close()">Sign in</a>
+      <a *ngIf="admin.loggedIn()" routerLink="/logout" (click)="close()">Sign out</a>
     </div>
   </div>
   
@@ -67,11 +72,11 @@
     <div class="inner" (click)="$event.stopPropagation()">
       <header>
         <div class="title">Your Cart</div>
-        <button class="close" (click)="closeCart()" aria-label="Close">Ã—</button>
+        <button class="close" (click)="closeCart()" aria-label="Close">×</button>
       </header>
       <div class="lines" *ngIf="items().length; else emptyCart">
         <div class="line" *ngFor="let it of items()">
-          <img [src]="it.image || 'assets/placeholder.svg'" alt="" (error)="imgError($event)" />
+          <img [src]="it.image || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII='" alt="" (error)="imgError($event)" />
           <div class="meta">
             <div class="name">{{ it.name }}</div>
             <div class="qty">
@@ -81,7 +86,7 @@
             </div>
           </div>
           <div class="price">{{ it.price * it.qty | currency: it.currency }}</div>
-          <button class="remove" (click)="remove(it.id)" aria-label="Remove">Ã—</button>
+          <button class="remove" (click)="remove(it.id)" aria-label="Remove">×</button>
         </div>
         <div class="total">
           <span>Subtotal</span><span>{{ total() | currency: (items()[0]?.currency || 'INR') }}</span>
@@ -120,3 +125,4 @@
     <span class="lab">Chat</span>
   </a>
 </nav>
+

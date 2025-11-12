@@ -1,10 +1,11 @@
-﻿import { Component, Input, signal, OnDestroy, AfterViewInit, inject, PLATFORM_ID } from '@angular/core';
+import { Component, Input, signal, OnDestroy, AfterViewInit, inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule, CurrencyPipe } from '@angular/common';
 import { ElementRef } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import type { Product } from '../../../models/product';
 import { CartService } from '../../../services/cart.service';
 import { InViewDirective } from '../../../directives/in-view.directive';
+import { AdminService } from '../../../services/admin.service';
 
 @Component({
   selector: 'app-product-card',
@@ -16,24 +17,25 @@ import { InViewDirective } from '../../../directives/in-view.directive';
 export class ProductCardComponent implements OnDestroy, AfterViewInit {
   @Input() product!: Product;
   @Input() featured: boolean = false;
-  constructor(private cart: CartService, private el: ElementRef<HTMLElement>) {}
+  @Input() ratingAvg?: number | null;
+  @Input() ratingCountExt?: number | null;
+  constructor(private cart: CartService, private el: ElementRef<HTMLElement>, private admin: AdminService, private router: Router) {}
   private platformId = inject(PLATFORM_ID);
   qvOpen = signal(false);
   imgLoaded = signal(false);
   qvQty = signal(1);
   // QV gallery state
   qvIndex = signal(0);
-  private tsX = 0; private teX = 0; private moved = false;
+  private qvTsX = 0; private qvTeX = 0; private qvMoved = false;
   private keyHandler?: (e: KeyboardEvent) => void;
-  hoverIndex: number = 0; // next image index used for overlay
+  // Hover slide state
+  slideIndex = signal(0);
+  noAnim = signal(false); // disables transition for seamless loop reset
   private hoverTimer: any;
-  // Base layer index (currently shown image beneath the fading overlay)
-  baseIndex = signal(0);
-  // Overlay visibility flag for crossfade
-  overlayVisible = signal(false);
+  private slideDurationMs = 450; // keep in sync with CSS
   imageUrl(): string {
     const imgs = (this.product?.images || []).filter(Boolean);
-    return imgs.length ? imgs[this.baseIndex()] : 'assets/placeholder.svg';
+    return imgs[0] || '/assets/brand/brand-fallback.png';
   }
   webpCandidate(url: string | undefined | null): string {
     if (!url) return '';
@@ -60,8 +62,15 @@ export class ProductCardComponent implements OnDestroy, AfterViewInit {
     if (this.keyHandler) try { document.removeEventListener('keydown', this.keyHandler); } catch {}
   }
   onImgLoad() { this.imgLoaded.set(true); }
+  private ensureLoggedIn(): boolean {
+    try { this.admin.refresh(); } catch {}
+    if (this.admin.loggedIn()) return true;
+    try { const ret = this.router.url || '/cart'; this.router.navigate(['/login'], { queryParams: { returnUrl: ret } }); } catch {}
+    return false;
+  }
   add(ev: Event) {
     ev.preventDefault(); ev.stopPropagation();
+    if (!this.ensureLoggedIn()) return;
     const p = this.product;
     this.cart.add({ id: p.id || p.slug, name: p.name, price: p.price, currency: p.currency, image: p.images[0] }, 1);
     this.added.set(true);
@@ -69,6 +78,7 @@ export class ProductCardComponent implements OnDestroy, AfterViewInit {
     setTimeout(() => this.added.set(false), 1800);
   }
   addFromQV() {
+    if (!this.ensureLoggedIn()) return;
     const p = this.product;
     const qty = Math.max(1, Math.min(10, this.qvQty()));
     this.cart.add({ id: p.id || p.slug, name: p.name, price: p.price, currency: p.currency, image: p.images[0] }, qty);
@@ -83,67 +93,115 @@ export class ProductCardComponent implements OnDestroy, AfterViewInit {
   nextQV() { const imgs = this.images(); if (imgs.length <= 1) return; this.qvIndex.set((this.qvIndex()+1) % imgs.length); }
   prevQV() { const imgs = this.images(); if (imgs.length <= 1) return; this.qvIndex.set((this.qvIndex()-1+imgs.length) % imgs.length); }
   selectQV(i: number) { const imgs = this.images(); if (!imgs.length) return; this.qvIndex.set(Math.max(0, Math.min(imgs.length-1, i))); }
-  qvTouchStart(ev: TouchEvent) { this.tsX = ev.touches?.[0]?.clientX ?? 0; this.teX = this.tsX; this.moved = false; }
-  qvTouchMove(ev: TouchEvent) { this.teX = ev.touches?.[0]?.clientX ?? 0; this.moved = true; }
-  qvTouchEnd() { const dx = this.teX - this.tsX; const threshold = 40; if (Math.abs(dx) > threshold) { if (dx < 0) this.nextQV(); else this.prevQV(); } this.tsX = this.teX = 0; this.moved = false; }
+  qvTouchStart(ev: TouchEvent) { this.qvTsX = ev.touches?.[0]?.clientX ?? 0; this.qvTeX = this.qvTsX; this.qvMoved = false; }
+  qvTouchMove(ev: TouchEvent) { this.qvTeX = ev.touches?.[0]?.clientX ?? 0; this.qvMoved = true; }
+  qvTouchEnd() { const dx = this.qvTeX - this.qvTsX; const threshold = 40; if (Math.abs(dx) > threshold) { if (dx < 0) this.nextQV(); else this.prevQV(); } this.qvTsX = this.qvTeX = 0; this.qvMoved = false; }
 
   ngAfterViewInit(): void {
     // Keep dynamic effect uniform: hover/touch only (no autoplay)
+    // Pause any running hover timers if card leaves viewport
+    if (typeof window !== 'undefined' && this.el?.nativeElement) {
+      try {
+        const io = new IntersectionObserver((entries) => {
+          for (const e of entries) {
+            if (!e.isIntersecting) this.stopSlide();
+          }
+        }, { threshold: 0.1 });
+        io.observe(this.el.nativeElement);
+        (this as any)._io = io;
+      } catch {}
+    }
   }
 
   ngOnDestroy(): void {
     try { document.body.style.overflow = ''; } catch {}
     if (this.keyHandler) try { document.removeEventListener('keydown', this.keyHandler); } catch {}
-    // no observers since we removed autoplay-in-view
+    try { (this as any)._io?.disconnect?.(); } catch {}
   }
-  get rating(): number { return 4 + ((this.product.name.length % 10) / 10); } // 4.0 - 4.9 mock
-  get ratingCount(): number { return 20 + (this.product.slug.length * 7) % 180; }
+  get rating(): number { return typeof this.ratingAvg === 'number' ? this.ratingAvg : (4 + ((this.product.name.length % 10) / 10)); } // 4.0 - 4.9 mock
+  get ratingCount(): number { return typeof this.ratingCountExt === 'number' ? this.ratingCountExt : (20 + (this.product.slug.length * 7) % 180); }
   onImgError(ev: Event) {
     const el = ev.target as HTMLImageElement;
-    const src = this.product?.images?.[0] || '';
-    if (!el || !src) { if (el) el.src = 'assets/placeholder.svg'; return; }
-    const tried = (el as any)._triedSvgFallback;
-    if (tried) { el.src = 'assets/placeholder.svg'; return; }
-    (el as any)._triedSvgFallback = true;
-    el.src = src.replace(/\.[^.]+$/, '.svg');
+    const imgs = (this.product?.images || []).filter(Boolean);
+    // Find current index by src; fallback to slideIndex
+    let cur = -1;
+    try { if (el && el.src) cur = imgs.findIndex(u => u === el.src); } catch {}
+    if (cur < 0) cur = this.slideIndex();
+    // Try next available image if current fails
+    for (let i = 1; i <= imgs.length; i++) {
+      const idx = (cur + i) % (imgs.length || 1);
+      if (imgs[idx] && imgs[idx] !== imgs[cur]) {
+        this.slideIndex.set(idx);
+        if (el) el.src = imgs[idx];
+        return;
+      }
+    }
+    // Fallback to placeholder
+    if (el) el.src = '/assets/brand/brand-fallback.png';
     this.imgLoaded.set(true);
   }
   added = signal(false);
   onCardEnter() {
     const imgs = (this.product?.images || []).filter(Boolean);
     if (imgs.length <= 1) return;
-    this.startAuto(900);
+    this.startSlide(900);
   }
   onCardLeave() {
-    this.stopAuto();
-    this.hoverIndex = 0;
-    this.overlayVisible.set(false);
+    this.stopSlide();
+    this.slideIndex.set(0);
   }
-
-  private startAuto(intervalMs: number = 1200) {
+  private startSlide(intervalMs: number = 1200) {
     const imgs = (this.product?.images || []).filter(Boolean);
     if (imgs.length <= 1) return;
-    this.stopAuto();
-    // Start from the current base index
-    let i = this.baseIndex();
+    this.stopSlide();
     this.hoverTimer = setInterval(() => {
-      i = (i + 1) % imgs.length;
-      this.crossfadeTo(i);
+      // advance; include a cloned first frame at the end for seamless loop
+      const len = imgs.length;
+      const next = this.slideIndex() + 1;
+      if (next <= len) {
+        this.slideIndex.set(next);
+      }
+      // when we hit the cloned frame (index === len), jump back to 0 without anim
+      if (next === len) {
+        setTimeout(() => {
+          this.noAnim.set(true);
+          this.slideIndex.set(0);
+          // allow layout to apply then re-enable transition
+          setTimeout(() => this.noAnim.set(false), 20);
+        }, this.slideDurationMs);
+      }
     }, intervalMs);
   }
-  private stopAuto() { try { clearInterval(this.hoverTimer); } catch {} this.hoverTimer = null; }
+  private stopSlide() { try { clearInterval(this.hoverTimer); } catch {} this.hoverTimer = null; }
 
-  // Smooth crossfade to target index using an overlay image.
-  private crossfadeTo(targetIndex: number) {
+  // Touch swipe (mobile)
+  private tsX = 0; private teX = 0;
+  onTouchStart(ev: TouchEvent) { this.tsX = ev.touches?.[0]?.clientX ?? 0; this.teX = this.tsX; }
+  onTouchMove(ev: TouchEvent) { this.teX = ev.touches?.[0]?.clientX ?? 0; }
+  onTouchEnd() {
+    const dx = this.teX - this.tsX; const threshold = 40;
     const imgs = (this.product?.images || []).filter(Boolean);
     if (imgs.length <= 1) return;
-    if (targetIndex === this.baseIndex()) return;
-    this.hoverIndex = targetIndex; // sets overlay image src
-    this.overlayVisible.set(true);
-    // After fade, commit the new base and hide overlay
-    setTimeout(() => {
-      this.baseIndex.set(targetIndex);
-      this.overlayVisible.set(false);
-    }, 300);
+    if (dx < -threshold) {
+      const len = imgs.length;
+      const next = Math.min(this.slideIndex() + 1, len);
+      this.slideIndex.set(next);
+      if (next === len) {
+        setTimeout(() => { this.noAnim.set(true); this.slideIndex.set(0); setTimeout(() => this.noAnim.set(false), 20); }, this.slideDurationMs);
+      }
+    } else if (dx > threshold) {
+      // swipe right
+      if (this.slideIndex() === 0) {
+        // jump to last frame (len-1) without anim
+        this.noAnim.set(true);
+        const imgsLen = imgs.length;
+        this.slideIndex.set(imgsLen - 1);
+        setTimeout(() => this.noAnim.set(false), 20);
+      } else {
+        this.slideIndex.set(Math.max(0, this.slideIndex() - 1));
+      }
+    }
+    this.tsX = this.teX = 0;
   }
 }
+
